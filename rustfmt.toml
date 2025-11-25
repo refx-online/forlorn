@@ -1,0 +1,13 @@
+max_width = 100
+use_small_heuristics = "Max"
+tab_spaces = 4
+style_edition = "2024"
+reorder_imports = true
+fn_call_width = 60
+chain_width = 60
+fn_params_layout = "Tall"
+match_block_trailing_comma = true
+trailing_comma = "Vertical"
+struct_lit_width = 40
+struct_variant_width = 40
+indent_style = "Block"
