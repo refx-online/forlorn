@@ -8,7 +8,7 @@ pub async fn recalculate(db: &DbPoolManager, stats: &mut Stats) -> Result<()> {
         r#"
         select s.acc, s.pp 
         from scores s 
-        right join beatmaps b on s.map_md5 = b.md5 
+        right join maps b on s.map_md5 = b.md5 
         where s.status = 2 and s.mode = ? and b.status in (2, 3) and s.userid = ? 
         order by s.pp desc 
         limit 100
@@ -43,7 +43,7 @@ pub async fn recalculate(db: &DbPoolManager, stats: &mut Stats) -> Result<()> {
 pub async fn calculate_bonus(db: &DbPoolManager, stats: &Stats) -> Result<f32> {
     let result = sqlx::query_scalar::<_, i64>(
         "select count(*) from scores s \
-         right join beatmaps b on s.map_md5 = b.md5 \
+         right join maps b on s.map_md5 = b.md5 \
          where b.status in (2, 3) and s.status = 2 and s.mode = ? and s.userid = ?",
     )
     .bind(stats.mode)
