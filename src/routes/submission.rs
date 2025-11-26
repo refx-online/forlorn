@@ -15,6 +15,25 @@ use crate::usecases::score::{
     calculate_accuracy, calculate_score_performance, calculate_status, decrypt_score_data,
 };
 
+#[derive(Debug, Clone)]
+struct ScoreHeader {
+    map_md5: String,
+    username: String,
+}
+
+impl ScoreHeader {
+    fn from_decrypted(score_data: &[String]) -> Option<Self> {
+        if score_data.len() < 2 {
+            return None;
+        }
+
+        Some(Self {
+            map_md5: score_data[0].clone(),
+            username: score_data[1].trim().to_string(),
+        })
+    }
+}
+
 #[derive(Default)]
 struct SubmissionFields {
     exited_out: bool,
@@ -29,6 +48,7 @@ struct SubmissionFields {
     osu_version: String,
     client_hash_b64: Vec<u8>,
 
+    // refx original sin
     aim_value: i32,
     ar_value: f32,
     aim: bool,
@@ -38,16 +58,16 @@ struct SubmissionFields {
     tw: bool,
     twval: f32,
     refx: bool,
-
-    score_data_b64: String,
-    username: String,
+    score_data_b64: Vec<u8>,
+    replay_file: Vec<u8>,
 }
 
 async fn authenticate_user(
     state: &AppState,
     fields: &SubmissionFields,
+    username: &str,
 ) -> Result<User, axum::response::Response> {
-    let user = match repository::user::fetch_by_name(&state.db, fields.username.trim()).await {
+    let user = match repository::user::fetch_by_name(&state.db, username).await {
         Ok(Some(user)) => user,
         _ => {
             return Err(StatusCode::OK.into_response());
@@ -65,11 +85,6 @@ pub async fn submit_score(
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> impl IntoResponse {
-    let _token = headers
-        .get("authorization")
-        .and_then(|h| h.to_str().ok())
-        .map(|s| s.to_string());
-
     let user_agent = headers
         .get("user-agent")
         .and_then(|h| h.to_str().ok())
@@ -82,14 +97,28 @@ pub async fn submit_score(
 
     let mut fields = SubmissionFields::default();
 
+    // HACK: to count how many "score" fields are there
+    //       because osu! client sends both score data and replay file
+    //       with the same field name "score" (pepy why)
+    let mut score_count = 0;
+
     // NOTE: unfortunately on axum, i dont have better idea to do like fastapi do
     //       is this really the correct way to parse multipart form data...?
     while let Some(field) = multipart.next_field().await.ok().flatten() {
-        let name = field.name().unwrap_or("").to_string();
-
-        let content = field.bytes().await.ok().unwrap_or_default();
-
+        let name = field.name().map(|s| s.to_owned()).unwrap_or_default();
+        let content = field.bytes().await.unwrap_or_default();
         let text = String::from_utf8_lossy(&content);
+
+        if name == "score" {
+            if score_count == 0 {
+                fields.score_data_b64 = content.to_vec();
+            } else if score_count == 1 {
+                fields.replay_file = content.to_vec();
+            }
+
+            score_count += 1;
+            continue;
+        }
 
         match name.as_str() {
             "x" => fields.exited_out = text == "1",
@@ -104,6 +133,7 @@ pub async fn submit_score(
             "osuver" => fields.osu_version = text.to_string(),
             "s" => fields.client_hash_b64 = content.to_vec(),
 
+            // refx original sin
             "acval" => fields.aim_value = text.parse().unwrap_or(0),
             "arval" => fields.ar_value = text.parse().unwrap_or(0.0),
             "ac" => fields.aim = text == "1" || text.to_lowercase() == "true",
@@ -113,20 +143,12 @@ pub async fn submit_score(
             "tw" => fields.tw = text == "1" || text.to_lowercase() == "true",
             "twval" => fields.twval = text.parse().unwrap_or(0.0),
             "refx" => fields.refx = text == "1" || text.to_lowercase() == "true",
-
-            "score" => fields.score_data_b64 = text.to_string(),
-            "u" => fields.username = text.to_string(),
             _ => {},
         }
     }
 
-    let user = match authenticate_user(&state, &fields).await {
-        Ok(user) => user,
-        Err(response) => return response,
-    };
-
     let (score_data, _) = match decrypt_score_data(
-        fields.score_data_b64.as_bytes(),
+        &fields.score_data_b64,
         &fields.client_hash_b64,
         &fields.iv_b64,
         &fields.osu_version,
@@ -135,13 +157,17 @@ pub async fn submit_score(
         Err(_) => return (StatusCode::BAD_REQUEST, "error: decrypt").into_response(),
     };
 
-    let beatmap_md5 = score_data.first().cloned().unwrap_or_default();
+    let score_header = match ScoreHeader::from_decrypted(&score_data) {
+        Some(d) => d,
+        None => return (StatusCode::BAD_REQUEST, "error: score data < 2").into_response(),
+    };
 
-    if beatmap_md5.is_empty() {
-        return (StatusCode::BAD_REQUEST, "error: beatmap").into_response();
-    }
+    let user = match authenticate_user(&state, &fields, &score_header.username).await {
+        Ok(user) => user,
+        Err(response) => return response,
+    };
 
-    let beatmap = match repository::beatmap::fetch_by_md5(&state.db, &beatmap_md5).await {
+    let beatmap = match repository::beatmap::fetch_by_md5(&state.db, &score_header.map_md5).await {
         Ok(Some(beatmap)) => beatmap,
         _ => return (StatusCode::BAD_REQUEST, "error: beatmap").into_response(),
     };

@@ -12,12 +12,8 @@ pub enum GameMode {
     RX_OSU = 4,
     RX_TAIKO = 5,
     RX_CATCH = 6,
-    RX_MANIA = 7, // unused
 
     AP_OSU = 8,
-    AP_TAIKO = 9,  // unused
-    AP_CATCH = 10, // unused
-    AP_MANIA = 11, // unused
 
     CHEAT_OSU = 12,
     CHEAT_CHEAT_OSU = 16,
@@ -51,28 +47,25 @@ impl GameMode {
     pub fn as_vanilla(self) -> u8 {
         self as u8 % 4
     }
-}
 
-pub const GAMEMODE_REPR: [&str; 21] = [
-    "vn!std",
-    "vn!taiko",
-    "vn!catch",
-    "vn!mania",
-    "rx!std",
-    "rx!taiko",
-    "rx!catch",
-    "rx!mania",
-    "ap!std",
-    "ap!taiko",
-    "ap!catch",
-    "ap!mania",
-    "cheat!std",
-    "cheat!taiko",
-    "cheat!catch",
-    "cheat!mania",
-    "cheatcheat!std",
-    "cheatcheat!taiko",
-    "cheatcheat!catch",
-    "cheatcheat!mania",
-    "td!std",
-];
+    /// TODO: create a macro to handle cases like this
+    pub fn repr(self) -> &'static str {
+        match self {
+            GameMode::VN_OSU => "vn!std",
+            GameMode::VN_TAIKO => "vn!taiko",
+            GameMode::VN_CATCH => "vn!catch",
+            GameMode::VN_MANIA => "vn!mania",
+
+            GameMode::RX_OSU => "rx!std",
+            GameMode::RX_TAIKO => "rx!taiko",
+            GameMode::RX_CATCH => "rx!catch",
+
+            GameMode::AP_OSU => "ap!std",
+
+            GameMode::CHEAT_OSU => "cheat!std",
+            GameMode::CHEAT_CHEAT_OSU => "cheatcheat!std",
+
+            GameMode::TOUCH_DEVICE_OSU => "td!std",
+        }
+    }
+}
