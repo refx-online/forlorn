@@ -2,6 +2,7 @@ use anyhow::Result;
 use base64::prelude::*;
 use simple_rijndael::impls::RijndaelCbc;
 use simple_rijndael::paddings::Pkcs7Padding;
+use simple_rijndael::Errors;
 
 use crate::config::OmajinaiConfig;
 use crate::constants::SubmissionStatus;
@@ -14,16 +15,20 @@ pub fn decrypt_score_data(
     client_hash_b64: &[u8],
     iv_b64: &[u8],
     osu_version: &str,
-) -> Result<(Vec<String>, String), simple_rijndael::Errors> {
+) -> Result<(Vec<String>, String), Errors> {
     let aes = RijndaelCbc::<Pkcs7Padding>::new(
         format!("osu!-scoreburgr---------{osu_version}").as_bytes(),
         32,
     )?;
 
-    let iv = BASE64_STANDARD.decode(iv_b64).unwrap();
+    let iv = BASE64_STANDARD
+        .decode(iv_b64)
+        .map_err(|_| Errors::InvalidDataSize)?;
 
     let score_data: Vec<String> = {
-        let b = aes.decrypt(&iv, BASE64_STANDARD.decode(score_data_b64).unwrap())?;
+        let b = aes
+            .decrypt(&iv, BASE64_STANDARD.decode(score_data_b64)
+            .map_err(|_| Errors::InvalidDataSize)?)?;
 
         String::from_utf8_lossy(&b)
             .split(':')
@@ -32,7 +37,10 @@ pub fn decrypt_score_data(
     };
 
     let client_hash_decoded: String = {
-        let b = aes.decrypt(&iv, BASE64_STANDARD.decode(client_hash_b64).unwrap())?;
+        let b = aes
+            .decrypt(&iv, BASE64_STANDARD
+            .decode(client_hash_b64)
+            .map_err(|_| Errors::InvalidDataSize)?)?;
 
         String::from_utf8_lossy(&b).to_string()
     };
