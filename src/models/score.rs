@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-use crate::constants::{GameMode, Mods};
+use crate::constants::{GameMode, Mods, SubmissionStatus};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Score {
@@ -87,6 +87,10 @@ impl Score {
             hdr: false,
             pinned: false,
         })
+    }
+
+    pub fn passed(&self) -> bool {
+        self.status != SubmissionStatus::Failed.as_i32()
     }
 
     pub fn mode(&self) -> GameMode {

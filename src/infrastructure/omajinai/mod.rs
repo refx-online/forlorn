@@ -4,25 +4,33 @@ use std::sync::LazyLock;
 
 use crate::config::OmajinaiConfig;
 
-static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| reqwest::Client::new());
+pub mod beatmap;
+
+static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
 
 #[derive(Serialize)]
 pub struct PerformanceRequest {
     pub beatmap_id: i32,
     pub mode: i32,
-    pub mods: u32,
+    pub mods: i32,
     pub max_combo: i32,
     pub accuracy: f32,
     pub miss_count: i32,
-    pub lazer: Option<bool>,
-    pub passed_objects: Option<i32>,
-    pub legacy_score: Option<i32>,
+    //pub lazer: Option<bool>,
+    //pub passed_objects: Option<i32>,
+    pub legacy_score: i32,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PerformanceResult {
     pub stars: f32,
     pub pp: f32,
+}
+
+impl Default for PerformanceResult {
+    fn default() -> Self {
+        Self { stars: 0.0, pp: 0.0 }
+    }
 }
 
 // matches {"data": {...}}
@@ -55,13 +63,6 @@ pub async fn calculate_pp(
             if let Some(n) = v.as_i64() {
                 *v = serde_json::Value::from(n % 4);
             }
-        }
-
-        if req.lazer == Some(true) {
-            params.insert(
-                "mods".into(),
-                serde_json::Value::String(req.mods.to_string()),
-            );
         }
 
         let resp = CLIENT.get(&url).query(&params).send().await?;

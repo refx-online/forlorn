@@ -1,7 +1,8 @@
+use anyhow::Result;
+
 use crate::infrastructure::database::DbPoolManager;
 use crate::models::Stats;
 use crate::repository;
-use anyhow::Result;
 
 pub async fn recalculate(db: &DbPoolManager, stats: &mut Stats) -> Result<()> {
     let scores = sqlx::query_as::<_, (f64, f64)>(

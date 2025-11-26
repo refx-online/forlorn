@@ -42,23 +42,3 @@ pub async fn md5_from_database(db: &DbPoolManager, md5: &str) -> Result<Option<B
 
     Ok(beatmap)
 }
-
-pub async fn increment_playcount(
-    db: &DbPoolManager,
-    beatmap: &mut Beatmap,
-    passcount: bool,
-) -> Result<()> {
-    beatmap.plays += 1;
-    if passcount {
-        beatmap.passes += 1;
-    }
-
-    sqlx::query("update maps set plays = ?, passes = ? where md5 = ?")
-        .bind(beatmap.plays)
-        .bind(beatmap.passes)
-        .bind(&beatmap.md5)
-        .execute(db.as_ref())
-        .await?;
-
-    Ok(())
-}

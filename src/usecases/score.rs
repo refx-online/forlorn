@@ -1,10 +1,13 @@
+use anyhow::Result;
 use base64::prelude::*;
 use simple_rijndael::impls::RijndaelCbc;
 use simple_rijndael::paddings::Pkcs7Padding;
 
+use crate::config::OmajinaiConfig;
 use crate::constants::SubmissionStatus;
+use crate::infrastructure::database::DbPoolManager;
+use crate::infrastructure::omajinai::{PerformanceRequest, calculate_pp};
 use crate::models::Score;
-use anyhow::Result;
 
 pub fn decrypt_score_data(
     score_data_b64: &[u8],
@@ -13,7 +16,7 @@ pub fn decrypt_score_data(
     osu_version: &str,
 ) -> Result<(Vec<String>, String), simple_rijndael::Errors> {
     let aes = RijndaelCbc::<Pkcs7Padding>::new(
-        format!("osu!-scoreburgr---------{}", osu_version).as_bytes(),
+        format!("osu!-scoreburgr---------{osu_version}").as_bytes(),
         32,
     )?;
 
@@ -83,23 +86,60 @@ pub fn calculate_accuracy(score: &Score) -> f32 {
     }
 }
 
-pub fn calculate_status(new_score: &mut Score, previous_best: Option<Score>) -> Option<Score> {
+pub async fn calculate_status(db: &DbPoolManager, new_score: &mut Score) -> Result<Option<Score>> {
+    let previous_best = crate::repository::score::fetch_best(
+        db,
+        new_score.userid,
+        &new_score.map_md5,
+        new_score.mode,
+    )
+    .await?;
+
     match previous_best {
         Some(mut prev_best) => {
             // we have a score on the map.
             // if our new score is better, update both submission statuses.
             if new_score.pp > prev_best.pp {
-                new_score.status = SubmissionStatus::BEST.as_i32();
-                prev_best.status = SubmissionStatus::SUBMITTED.as_i32();
+                new_score.status = SubmissionStatus::Best.as_i32();
+                prev_best.status = SubmissionStatus::Submitted.as_i32();
+
+                Ok(Some(prev_best))
             } else {
-                new_score.status = SubmissionStatus::SUBMITTED.as_i32();
+                new_score.status = SubmissionStatus::Submitted.as_i32();
+
+                Ok(None)
             }
-            Some(prev_best)
         },
         None => {
             // this is our first score on the map.
-            new_score.status = SubmissionStatus::BEST.as_i32();
-            None
+            new_score.status = SubmissionStatus::Best.as_i32();
+
+            Ok(None)
         },
+    }
+}
+
+pub async fn calculate_score_performance(
+    config: &OmajinaiConfig,
+    score: &Score,
+    beatmap_id: i32,
+) -> (f32, f32) {
+    let request = PerformanceRequest {
+        beatmap_id,
+        mode: score.mode,
+        mods: score.mods,
+        max_combo: score.max_combo,
+        accuracy: score.acc,
+        miss_count: score.nmiss,
+        legacy_score: score.score,
+    };
+
+    match calculate_pp(config, &[request]).await {
+        Ok(mut results) => {
+            let result = results.pop().unwrap_or_default();
+
+            (result.pp, result.stars)
+        },
+        Err(_) => (0.0, 0.0), // TODO: raise for error instead setting to 0? but it will broke submission..
     }
 }

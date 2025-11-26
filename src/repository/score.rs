@@ -1,6 +1,40 @@
+use anyhow::Result;
+
+use crate::constants::SubmissionStatus;
 use crate::infrastructure::database::DbPoolManager;
 use crate::models::Score;
-use anyhow::Result;
+
+pub async fn fetch_best(
+    db: &DbPoolManager,
+    user_id: i32,
+    map_md5: &str,
+    mode: i32,
+) -> Result<Option<Score>> {
+    let score = sqlx::query_as::<_, Score>(
+        "select * from scores 
+         where userid = ? AND map_md5 = ? AND mode = ? AND status = ?
+         order by pp DESC
+         limit 1",
+    )
+    .bind(user_id)
+    .bind(map_md5)
+    .bind(mode)
+    .bind(SubmissionStatus::Best.as_i32())
+    .fetch_optional(db.as_ref())
+    .await?;
+
+    Ok(score)
+}
+
+pub async fn update_status(db: &DbPoolManager, score_id: i32, status: i32) -> Result<()> {
+    sqlx::query("update scores set status = ? where id = ?")
+        .bind(status)
+        .bind(score_id)
+        .execute(db.as_ref())
+        .await?;
+
+    Ok(())
+}
 
 pub async fn insert(db: &DbPoolManager, score: &Score) -> Result<()> {
     sqlx::query(

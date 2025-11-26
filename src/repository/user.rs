@@ -3,7 +3,6 @@ use std::time::SystemTime;
 
 use crate::infrastructure::database::DbPoolManager;
 use crate::models::User;
-use crate::usecases::password;
 
 pub async fn fetch_by_name(db: &DbPoolManager, username: &str) -> Result<Option<User>> {
     let user = sqlx::query_as::<_, User>(
@@ -17,24 +16,6 @@ pub async fn fetch_by_name(db: &DbPoolManager, username: &str) -> Result<Option<
         .await?;
 
     Ok(user)
-}
-
-pub async fn authenticate(
-    db: &DbPoolManager,
-    username: &str,
-    password: &str,
-) -> Result<Option<User>> {
-    let user = fetch_by_name(db, username).await?;
-
-    if let Some(user) = user {
-        if password::verify_password(password, &user.pw_bcrypt).await? {
-            Ok(Some(user))
-        } else {
-            Ok(None)
-        }
-    } else {
-        Ok(None)
-    }
 }
 
 pub async fn update_latest_activity(db: &DbPoolManager, user_id: i32) -> Result<()> {

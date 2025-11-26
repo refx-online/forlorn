@@ -1,8 +1,9 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(i32)]
 pub enum SubmissionStatus {
-    BEST = 1,
-    SUBMITTED = 2,
+    Failed = 0,
+    Best = 1,
+    Submitted = 2,
 }
 
 impl SubmissionStatus {
@@ -12,8 +13,8 @@ impl SubmissionStatus {
 
     pub fn from_i32(value: i32) -> Option<Self> {
         match value {
-            1 => Some(SubmissionStatus::BEST),
-            2 => Some(SubmissionStatus::SUBMITTED),
+            1 => Some(SubmissionStatus::Best),
+            2 => Some(SubmissionStatus::Submitted),
             _ => None,
         }
     }

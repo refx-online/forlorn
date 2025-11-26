@@ -4,12 +4,16 @@ use axum::{
     response::IntoResponse,
 };
 
+use crate::constants::SubmissionStatus;
 use crate::models::Score;
 use crate::models::User;
 use crate::repository;
 use crate::state::AppState;
-use crate::usecases::score::{calculate_accuracy, decrypt_score_data};
+use crate::usecases::beatmap::ensure_local_osu_file;
 use crate::usecases::password::verify_password;
+use crate::usecases::score::{
+    calculate_accuracy, calculate_score_performance, calculate_status, decrypt_score_data,
+};
 
 #[derive(Default)]
 struct SubmissionFields {
@@ -131,7 +135,7 @@ pub async fn submit_score(
         Err(_) => return (StatusCode::BAD_REQUEST, "error: decrypt").into_response(),
     };
 
-    let beatmap_md5 = score_data.get(0).cloned().unwrap_or_default();
+    let beatmap_md5 = score_data.first().cloned().unwrap_or_default();
 
     if beatmap_md5.is_empty() {
         return (StatusCode::BAD_REQUEST, "error: beatmap").into_response();
@@ -147,9 +151,31 @@ pub async fn submit_score(
         None => return (StatusCode::BAD_REQUEST, "error: score").into_response(),
     };
 
+    let _ = repository::user::update_latest_activity(&state.db, user.id).await;
+
+    // idea: maybe, just maybe i could create another service that
+    //       handles score validation with also player validation?
+    //       would be fun, but for now, i will (?) complete this first.
+    // ref: https://github.com/remeliah/meat-my-beat-i/blob/0121e875e142dbb7278ca4b171dd8c1095e26fb0/app/api/domains/osu.py#L719-L769
+    //      https://github.com/remeliah/meat-my-beat-i/blob/main/app/usecases/ac.py
+
     score.acc = calculate_accuracy(&score);
 
-    let _ = repository::user::update_latest_activity(&state.db, user.id).await;
+    if let Ok(true) = ensure_local_osu_file(&state.config.omajinai, &beatmap).await {
+        (score.pp, _) =
+            calculate_score_performance(&state.config.omajinai, &score, beatmap.id).await;
+
+        if score.passed() {
+            if let Ok(Some(prev_best)) = calculate_status(&state.db, &mut score).await {
+                let _ = repository::score::update_status(&state.db, prev_best.id, prev_best.status)
+                    .await;
+            }
+        } else {
+            score.status = SubmissionStatus::Failed.as_i32();
+        }
+    }
+
+    score.time_elapsed = if score.passed() { fields.score_time } else { fields.fail_time };
 
     // todo
 

@@ -1,6 +1,8 @@
 use anyhow::Result;
+use redis::AsyncCommands;
 
 use crate::infrastructure::database::DbPoolManager;
+use crate::infrastructure::redis::RedisConnectionManager;
 use crate::models::Stats;
 
 pub async fn fetch_by_user_mode(
@@ -18,6 +20,32 @@ pub async fn fetch_by_user_mode(
     .await?;
 
     Ok(stats)
+}
+
+pub async fn get_global_rank(redis: &RedisConnectionManager, stats: &Stats) -> Result<usize> {
+    let leaderboard = format!("bancho:leaderboard:{}", stats.mode);
+    let mut conn = redis.lock().await;
+
+    let rank: Option<u64> = conn
+        .zrevrank::<_, _, Option<u64>>(&leaderboard, &stats.id.to_string())
+        .await?;
+
+    Ok(rank.map(|r| r as usize + 1).unwrap_or(0))
+}
+
+pub async fn get_country_rank(
+    redis: &RedisConnectionManager,
+    stats: &Stats,
+    country: &str,
+) -> Result<usize> {
+    let leaderboard = format!("bancho:leaderboard:{}:{}", stats.mode, country);
+    let mut conn = redis.lock().await;
+
+    let rank: Option<u64> = conn
+        .zrevrank::<_, _, Option<u64>>(&leaderboard, &stats.id.to_string())
+        .await?;
+
+    Ok(rank.map(|r| r as usize + 1).unwrap_or(0))
 }
 
 pub async fn save(db: &DbPoolManager, stats: &Stats) -> Result<()> {

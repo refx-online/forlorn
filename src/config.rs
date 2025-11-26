@@ -1,9 +1,6 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-
-#[allow(dead_code)]
-pub type ConfigManager = Arc<Config>;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -35,6 +32,11 @@ pub struct RedisConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OmajinaiConfig {
     pub base_url: String,
+    // not quite. omajinai does not serve beatmaps itself
+    // but its feature to check for beatmap relies on beatmap service
+    // since making another config for that seems overkill, i just put it here!
+    pub beatmap_service_url: String,
+    pub beatmap_path: PathBuf,
 }
 
 impl Default for Config {
@@ -75,7 +77,11 @@ impl Default for RedisConfig {
 
 impl Default for OmajinaiConfig {
     fn default() -> Self {
-        Self { base_url: "http://localhost:9292".into() }
+        Self {
+            base_url: "http://localhost:9292".into(),
+            beatmap_service_url: "https://b.remeliah.cyou".into(),
+            beatmap_path: PathBuf::from(".data/osu"),
+        }
     }
 }
 
@@ -124,6 +130,12 @@ impl Config {
 
         if let Ok(omajinai_url) = std::env::var("OMAJINAI_BASE_URL") {
             config.omajinai.base_url = omajinai_url;
+        }
+        if let Ok(omajinai_beatmap_service_url) = std::env::var("OMAJINAI_BEATMAP_SERVICE_URL") {
+            config.omajinai.beatmap_service_url = omajinai_beatmap_service_url;
+        }
+        if let Ok(omajinai_beatmap_path) = std::env::var("OMAJINAI_BEATMAP_PATH") {
+            config.omajinai.beatmap_path = PathBuf::from(omajinai_beatmap_path);
         }
 
         Ok(config)
