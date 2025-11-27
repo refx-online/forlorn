@@ -7,7 +7,7 @@ use simple_rijndael::paddings::Pkcs7Padding;
 use crate::config::OmajinaiConfig;
 use crate::constants::GameMode;
 use crate::constants::SubmissionStatus;
-use crate::dto::submission::SubmissionFields;
+use crate::dto::submission::ScoreSubmission;
 use crate::infrastructure::database::DbPoolManager;
 use crate::infrastructure::omajinai::{PerformanceRequest, calculate_pp};
 use crate::models::Score;
@@ -159,15 +159,15 @@ pub async fn calculate_score_performance(
     }
 }
 
-pub fn bind_cheat_values(score: &mut Score, fields: &SubmissionFields) {
-    score.uses_aim_correction = fields.aim;
+pub fn bind_cheat_values(score: &mut Score, fields: &ScoreSubmission) {
+    score.uses_aim_correction = fields.aim();
     score.aim_correction_value = fields.aim_value;
-    score.uses_ar_changer = fields.arc;
+    score.uses_ar_changer = fields.arc();
     score.ar_changer_value = fields.ar_value;
-    score.uses_timewarp = fields.tw;
+    score.uses_timewarp = fields.tw();
     score.timewarp_value = fields.twval;
-    score.uses_cs_changer = fields.cs;
-    score.uses_hd_remover = fields.hdr;
+    score.uses_cs_changer = fields.cs();
+    score.uses_hd_remover = fields.hdr();
 }
 
 pub fn validate_cheat_values(score: &Score) -> bool {

@@ -1,11 +1,13 @@
 use axum::{
+    body::Bytes,
     extract::{Multipart, State},
     http::{HeaderMap, StatusCode},
-    response::IntoResponse,
+    response::{Response, IntoResponse},
 };
+use std::collections::HashMap;
 
 use crate::constants::SubmissionStatus;
-use crate::dto::submission::{ScoreHeader, SubmissionFields};
+use crate::dto::submission::{ScoreHeader, ScoreSubmission};
 use crate::models::Score;
 use crate::models::User;
 use crate::repository;
@@ -19,9 +21,9 @@ use crate::usecases::score::{
 
 async fn authenticate_user(
     state: &AppState,
-    fields: &SubmissionFields,
+    password_md5: &str,
     username: &str,
-) -> Result<User, axum::response::Response> {
+) -> Result<User, Response> {
     let user = match repository::user::fetch_by_name(&state.db, username).await {
         Ok(Some(user)) => user,
         _ => {
@@ -29,10 +31,93 @@ async fn authenticate_user(
         },
     };
 
-    match verify_password(&fields.password_md5, &user.pw_bcrypt).await {
+    match verify_password(password_md5, &user.pw_bcrypt).await {
         Ok(true) => Ok(user),
         _ => Err(StatusCode::OK.into_response()),
     }
+}
+
+async fn parse_typed_multipart(
+    multipart: &mut Multipart,
+) -> Result<ScoreSubmission, Response> {
+    let mut score_data_b64: Option<Vec<u8>> = None;
+    let mut replay_file: Option<Vec<u8>> = None;
+
+    // HACK: to count how many "score" fields are there
+    //       because osu! client sends both score data and replay file
+    //       with the same field name "score" (pepy why)
+    let mut score_count = 0;
+
+    let mut fields: HashMap<String, Bytes> = HashMap::new();
+
+    while let Some(field) = multipart.next_field().await.ok().flatten() {
+        let name = field.name().map(|s| s.to_owned()).unwrap_or_default();
+        let content = field.bytes().await.unwrap_or_default();
+
+        if name == "score" {
+            if score_count == 0 {
+                score_data_b64 = Some(content.to_vec());
+            } else if score_count == 1 {
+                replay_file = Some(content.to_vec());
+            }
+
+            score_count += 1;
+            continue;
+        }
+
+        fields.insert(name, content);
+    }
+
+    let score_data_b64 = score_data_b64
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: score data").into_response())?;
+
+    let replay_file = replay_file
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: replay file").into_response())?;
+
+    let submission = ScoreSubmission {
+        exited_out: fields.get("x").map(|b| String::from_utf8_lossy(b).to_string()),
+        fail_time: fields.get("ft")
+            .and_then(|b| String::from_utf8_lossy(b).parse().ok())
+            .unwrap_or(0),
+        visual_settings_b64: fields.get("fs").map(|b| String::from_utf8_lossy(b).to_string()),
+        updated_beatmap_hash: fields.get("bmk").map(|b| String::from_utf8_lossy(b).to_string()),
+        storyboard_md5: fields.get("sbk").map(|b| String::from_utf8_lossy(b).to_string()),
+        iv_b64: fields.get("iv")
+            .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: iv").into_response())?
+            .clone(),
+        unique_ids: fields.get("c1").map(|b| String::from_utf8_lossy(b).to_string()),
+        score_time: fields.get("st")
+            .and_then(|b| String::from_utf8_lossy(b).parse().ok())
+            .unwrap_or(0),
+        password_md5: fields.get("pass")
+            .map(|b| String::from_utf8_lossy(b).to_string())
+            .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: password").into_response())?,
+        osu_version: fields.get("osuver")
+            .map(|b| String::from_utf8_lossy(b).to_string())
+            .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: osu version").into_response())?,
+        client_hash_b64: fields.get("s")
+            .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: client hash").into_response())?
+            .clone(),
+        aim_value: fields.get("acval")
+            .and_then(|b| String::from_utf8_lossy(b).parse().ok())
+            .unwrap_or(0),
+        ar_value: fields.get("arval")
+            .and_then(|b| String::from_utf8_lossy(b).parse().ok())
+            .unwrap_or(0.0),
+        aim: fields.get("ac").map(|b| String::from_utf8_lossy(b).to_string()),
+        arc: fields.get("ar").map(|b| String::from_utf8_lossy(b).to_string()),
+        hdr: fields.get("hdrem").map(|b| String::from_utf8_lossy(b).to_string()),
+        cs: fields.get("cs").map(|b| String::from_utf8_lossy(b).to_string()),
+        tw: fields.get("tw").map(|b| String::from_utf8_lossy(b).to_string()),
+        twval: fields.get("twval")
+            .and_then(|b| String::from_utf8_lossy(b).parse().ok())
+            .unwrap_or(0.0),
+        refx: fields.get("refx").map(|b| String::from_utf8_lossy(b).to_string()),
+        score_data_b64,
+        replay_file,
+    };
+
+    Ok(submission)
 }
 
 pub async fn submit_score(
@@ -50,65 +135,16 @@ pub async fn submit_score(
         return (StatusCode::BAD_REQUEST, "error: user-agent").into_response();
     }
 
-    let mut fields = SubmissionFields::default();
-
-    // HACK: to count how many "score" fields are there
-    //       because osu! client sends both score data and replay file
-    //       with the same field name "score" (pepy why)
-    let mut score_count = 0;
-
-    // NOTE: unfortunately on axum, i dont have better idea to do like fastapi do
-    //       is this really the correct way to parse multipart form data...?
-    while let Some(field) = multipart.next_field().await.ok().flatten() {
-        let name = field.name().map(|s| s.to_owned()).unwrap_or_default();
-        let content = field.bytes().await.unwrap_or_default();
-        let text = String::from_utf8_lossy(&content);
-
-        if name == "score" {
-            if score_count == 0 {
-                fields.score_data_b64 = content.to_vec();
-            } else if score_count == 1 {
-                fields.replay_file = content.to_vec();
-            }
-
-            score_count += 1;
-            continue;
-        }
-
-        match name.as_str() {
-            "x" => fields.exited_out = text == "1",
-            "ft" => fields.fail_time = text.parse().unwrap_or(0),
-            "fs" => fields.visual_settings_b64 = text.to_string(),
-            "bmk" => fields.updated_beatmap_hash = text.to_string(),
-            "sbk" => fields.storyboard_md5 = Some(text.to_string()),
-            "iv" => fields.iv_b64 = content.to_vec(),
-            "c1" => fields.unique_ids = text.to_string(),
-            "st" => fields.score_time = text.parse().unwrap_or(0),
-            "pass" => fields.password_md5 = text.to_string(),
-            "osuver" => fields.osu_version = text.to_string(),
-            "s" => fields.client_hash_b64 = content.to_vec(),
-
-            // refx original sin
-            // NOTE: values will never be None / 0 if refx, since the client (refx)
-            //       always submits value
-            "acval" => fields.aim_value = text.parse().unwrap_or(0),
-            "arval" => fields.ar_value = text.parse().unwrap_or(0.0),
-            "ac" => fields.aim = text == "1" || text.to_lowercase() == "true",
-            "ar" => fields.arc = text == "1" || text.to_lowercase() == "true",
-            "hdrem" => fields.hdr = text == "1" || text.to_lowercase() == "true",
-            "cs" => fields.cs = text == "1" || text.to_lowercase() == "true",
-            "tw" => fields.tw = text == "1" || text.to_lowercase() == "true",
-            "twval" => fields.twval = text.parse().unwrap_or(0.0),
-            "refx" => fields.refx = text == "1" || text.to_lowercase() == "true",
-            _ => {},
-        }
-    }
+    let submission = match parse_typed_multipart(&mut multipart).await {
+        Ok(d) => d,
+        Err(response) => return response,
+    };
 
     let (score_data, _) = match decrypt_score_data(
-        &fields.score_data_b64,
-        &fields.client_hash_b64,
-        &fields.iv_b64,
-        &fields.osu_version,
+        &submission.score_data_b64,
+        &submission.client_hash_b64,
+        &submission.iv_b64,
+        &submission.osu_version,
     ) {
         Ok((v, c)) => (v, c),
         Err(_) => return (StatusCode::BAD_REQUEST, "error: decrypt").into_response(),
@@ -119,7 +155,7 @@ pub async fn submit_score(
         None => return (StatusCode::BAD_REQUEST, "error: score data < 2").into_response(),
     };
 
-    let user = match authenticate_user(&state, &fields, &score_header.username).await {
+    let user = match authenticate_user(&state, &submission.password_md5, &score_header.username).await {
         Ok(user) => user,
         Err(response) => return response,
     };
@@ -142,9 +178,9 @@ pub async fn submit_score(
     // ref: https://github.com/remeliah/meat-my-beat-i/blob/0121e875e142dbb7278ca4b171dd8c1095e26fb0/app/api/domains/osu.py#L719-L769
     //      https://github.com/remeliah/meat-my-beat-i/blob/main/app/usecases/ac.py
 
-    bind_cheat_values(&mut score, &fields);
+    bind_cheat_values(&mut score, &submission);
 
-    if fields.refx && !validate_cheat_values(&score) {
+    if submission.refx() && !validate_cheat_values(&score) {
         // TODO: log to webhook
 
         // NOTE: it's not a good idea to return here,
@@ -169,7 +205,7 @@ pub async fn submit_score(
         }
     }
 
-    score.time_elapsed = if score.passed() { fields.score_time } else { fields.fail_time };
+    score.time_elapsed = if score.passed() { submission.score_time } else { submission.fail_time };
 
     // todo
 

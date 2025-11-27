@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::constants::privileges::Privileges;
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct User {
     pub id: i32,
@@ -21,4 +23,11 @@ pub struct User {
     pub userpage_content: Option<String>,
     pub api_key: Option<String>,
     pub whitelist: i32,
+}
+
+impl User {
+    pub fn restricted(&self) -> bool {
+        !Privileges::from_bits_truncate(self.privilege as u32)
+            .contains(Privileges::UNRESTRICTED)
+    }
 }
