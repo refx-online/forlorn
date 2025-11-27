@@ -6,6 +6,8 @@ use tokio::sync::Mutex;
 
 use crate::config::RedisConfig;
 
+pub mod publish;
+
 pub type RedisConnectionManager = Arc<Mutex<MultiplexedConnection>>;
 
 pub async fn create_connection(config: &RedisConfig) -> Result<RedisConnectionManager> {

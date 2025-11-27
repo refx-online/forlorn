@@ -39,58 +39,54 @@ bitflags! {
     }
 }
 
-pub fn repr(mods: Mods) -> String {
-    if mods.is_empty() {
-        return "NM".into();
-    }
-
-    let mut out = String::new();
-    let dict = mod2modstr_dict();
-
-    for (flag, s) in dict.iter() {
-        if mods.contains(*flag) {
-            out.push_str(s);
+impl Mods {
+    pub fn repr(self) -> String {
+        if self.is_empty() {
+            return "NM".into();
         }
+
+        let mut out = String::new();
+
+        let list = [
+            (Mods::NOFAIL, "NF"),
+            (Mods::EASY, "EZ"),
+            (Mods::TOUCHSCREEN, "TD"),
+            (Mods::HIDDEN, "HD"),
+            (Mods::HARDROCK, "HR"),
+            (Mods::SUDDENDEATH, "SD"),
+            (Mods::DOUBLETIME, "DT"),
+            (Mods::RELAX, "RX"),
+            (Mods::HALFTIME, "HT"),
+            (Mods::NIGHTCORE, "NC"),
+            (Mods::FLASHLIGHT, "FL"),
+            (Mods::AUTOPLAY, "AT"),
+            (Mods::SPUNOUT, "SO"),
+            (Mods::AUTOPILOT, "AP"),
+            (Mods::PERFECT, "PF"),
+            (Mods::KEY4, "K4"),
+            (Mods::KEY5, "K5"),
+            (Mods::KEY6, "K6"),
+            (Mods::KEY7, "K7"),
+            (Mods::KEY8, "K8"),
+            (Mods::FADEIN, "FI"),
+            (Mods::RANDOM, "RD"),
+            (Mods::CINEMA, "CN"),
+            (Mods::TARGET, "TP"),
+            (Mods::KEY9, "K9"),
+            (Mods::KEYCOOP, "KC"),
+            (Mods::KEY1, "K1"),
+            (Mods::KEY3, "K3"),
+            (Mods::KEY2, "K2"),
+            (Mods::SCOREV2, "V2"),
+            (Mods::MIRROR, "MR"),
+        ];
+
+        for (flag, text) in list {
+            if self.contains(flag) {
+                out.push_str(text);
+            }
+        }
+
+        out
     }
-
-    out
-}
-
-pub fn mod2modstr_dict() -> HashMap<Mods, &'static str> {
-    [
-        (Mods::NOFAIL, "NF"),
-        (Mods::EASY, "EZ"),
-        (Mods::TOUCHSCREEN, "TD"),
-        (Mods::HIDDEN, "HD"),
-        (Mods::HARDROCK, "HR"),
-        (Mods::SUDDENDEATH, "SD"),
-        (Mods::DOUBLETIME, "DT"),
-        (Mods::RELAX, "RX"),
-        (Mods::HALFTIME, "HT"),
-        (Mods::NIGHTCORE, "NC"),
-        (Mods::FLASHLIGHT, "FL"),
-        (Mods::AUTOPLAY, "AT"),
-        (Mods::SPUNOUT, "SO"),
-        (Mods::AUTOPILOT, "AP"),
-        (Mods::PERFECT, "PF"),
-        (Mods::KEY4, "K4"),
-        (Mods::KEY5, "K5"),
-        (Mods::KEY6, "K6"),
-        (Mods::KEY7, "K7"),
-        (Mods::KEY8, "K8"),
-        (Mods::FADEIN, "FI"),
-        (Mods::RANDOM, "RD"),
-        (Mods::CINEMA, "CN"),
-        (Mods::TARGET, "TP"),
-        (Mods::KEY9, "K9"),
-        (Mods::KEYCOOP, "KC"),
-        (Mods::KEY1, "K1"),
-        (Mods::KEY3, "K3"),
-        (Mods::KEY2, "K2"),
-        (Mods::SCOREV2, "V2"),
-        (Mods::MIRROR, "MR"),
-    ]
-    .iter()
-    .cloned()
-    .collect()
 }

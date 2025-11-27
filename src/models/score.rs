@@ -57,6 +57,8 @@ pub struct Score {
 
     #[sqlx(skip)]
     pub rank: u32,
+    #[sqlx(skip)]
+    pub stars: f32,
 }
 
 impl Score {
@@ -106,6 +108,7 @@ impl Score {
             uses_hd_remover: false,
             pinned: false,
             rank: 0,
+            stars: 0.0,
         })
     }
 

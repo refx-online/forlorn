@@ -28,3 +28,18 @@ pub struct Beatmap {
     pub hp: f32,
     pub diff: f32,
 }
+
+impl Beatmap {
+    pub fn full_name(&self) -> String {
+        format!("{} - {} [{}]", self.artist, self.title, self.version)
+    }
+
+    pub fn url(&self) -> String {
+        // todo: use env
+        format!("http://osu.remeliah.cyou/beatmaps/{}", self.id)
+    }
+
+    pub fn embed(&self) -> String {
+        format!("[{} {}]", self.url(), self.full_name())
+    }
+}

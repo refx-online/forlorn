@@ -8,6 +8,7 @@ use std::collections::HashMap;
 
 use crate::constants::{SubmissionStatus, RankedStatus};
 use crate::dto::submission::{ScoreHeader, ScoreSubmission};
+use crate::infrastructure::redis::publish::announce;
 use crate::models::Score;
 use crate::models::User;
 use crate::repository;
@@ -192,7 +193,7 @@ pub async fn submit_score(
     score.acc = calculate_accuracy(&score);
 
     if let Ok(true) = ensure_local_osu_file(&state.config.omajinai, &beatmap).await {
-        (score.pp, _) =
+        (score.pp, score.stars) =
             calculate_score_performance(&state.config.omajinai, &score, beatmap.id).await;
 
         if score.passed() {
@@ -215,8 +216,18 @@ pub async fn submit_score(
         if score.rank == 1 && !user.restricted()
         {
             // TODO: log to webhook
-            //       also should i create a pubsub to tell bancho
-            //       to send #1 message to #announce?
+            let mut s = format!(
+                "\x01ACTION achieved #1 on {} with {:.2}% for {:.2}pp",
+                beatmap.embed(),
+                score.acc,
+                score.pp,
+            );
+
+            if score.mods != 0 {
+                s.insert_str(1, &format!("{}", score.mods().repr()));
+            }
+
+            let _ = announce::announce(&state.redis, &s);
         }
 
         update_any_preexisting_personal_best(&state.db, &score).await;
