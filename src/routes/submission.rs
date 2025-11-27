@@ -254,10 +254,10 @@ pub async fn submit_score(
             );
 
             if score.mods != 0 {
-                s.insert_str(1, &score.mods().repr().to_string());
+                s.push_str(&format!(" +{}", &score.mods().repr()));
             }
 
-            let _ = announce::announce(&state.redis, &s);
+            let _ = announce::announce(&state.redis, &s).await;
         }
 
         update_any_preexisting_personal_best(&state.db, &score).await;
