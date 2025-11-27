@@ -1,8 +1,10 @@
 pub mod mode;
 pub mod mods;
 pub mod privileges;
-pub mod score_status;
+pub mod status;
+pub mod grade;
 
 pub use mode::GameMode;
 pub use mods::Mods;
-pub use score_status::SubmissionStatus;
+pub use status::SubmissionStatus;
+pub use status::RankedStatus;

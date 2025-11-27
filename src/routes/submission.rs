@@ -6,7 +6,7 @@ use axum::{
 };
 use std::collections::HashMap;
 
-use crate::constants::SubmissionStatus;
+use crate::constants::{SubmissionStatus, RankedStatus};
 use crate::dto::submission::{ScoreHeader, ScoreSubmission};
 use crate::models::Score;
 use crate::models::User;
@@ -15,8 +15,8 @@ use crate::state::AppState;
 use crate::usecases::beatmap::ensure_local_osu_file;
 use crate::usecases::password::verify_password;
 use crate::usecases::score::{
-    bind_cheat_values, calculate_accuracy, calculate_score_performance, calculate_status,
-    decrypt_score_data, validate_cheat_values,
+    bind_cheat_values, calculate_accuracy, calculate_score_performance, calculate_status, calculate_placement,
+    decrypt_score_data, validate_cheat_values, update_any_preexisting_personal_best
 };
 
 async fn authenticate_user(
@@ -200,12 +200,27 @@ pub async fn submit_score(
                 let _ = repository::score::update_status(&state.db, prev_best.id, prev_best.status)
                     .await;
             }
+
+            if beatmap.status != RankedStatus::Pending.as_i32() {
+                score.rank = calculate_placement(&state.db, &score).await;
+            }
         } else {
             score.status = SubmissionStatus::Failed.as_i32();
         }
     }
 
     score.time_elapsed = if score.passed() { submission.score_time } else { submission.fail_time };
+
+    if score.status == SubmissionStatus::Best.as_i32() {
+        if score.rank == 1 && !user.restricted()
+        {
+            // TODO: log to webhook
+            //       also should i create a pubsub to tell bancho
+            //       to send #1 message to #announce?
+        }
+
+        update_any_preexisting_personal_best(&state.db, &score).await;
+    }
 
     // todo
 
