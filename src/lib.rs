@@ -1,5 +1,6 @@
 pub mod config;
 pub mod constants;
+pub mod dto;
 pub mod infrastructure;
 pub mod models;
 pub mod repository;

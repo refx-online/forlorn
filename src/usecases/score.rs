@@ -5,7 +5,9 @@ use simple_rijndael::impls::RijndaelCbc;
 use simple_rijndael::paddings::Pkcs7Padding;
 
 use crate::config::OmajinaiConfig;
+use crate::constants::GameMode;
 use crate::constants::SubmissionStatus;
+use crate::dto::submission::SubmissionFields;
 use crate::infrastructure::database::DbPoolManager;
 use crate::infrastructure::omajinai::{PerformanceRequest, calculate_pp};
 use crate::models::Score;
@@ -154,5 +156,45 @@ pub async fn calculate_score_performance(
             (result.pp, result.stars)
         },
         Err(_) => (0.0, 0.0), // TODO: raise for error instead setting to 0? but it will broke submission..
+    }
+}
+
+pub fn bind_cheat_values(score: &mut Score, fields: &SubmissionFields) {
+    score.uses_aim_correction = fields.aim;
+    score.aim_correction_value = fields.aim_value;
+    score.uses_ar_changer = fields.arc;
+    score.ar_changer_value = fields.ar_value;
+    score.uses_timewarp = fields.tw;
+    score.timewarp_value = fields.twval;
+    score.uses_cs_changer = fields.cs;
+    score.uses_hd_remover = fields.hdr;
+}
+
+pub fn validate_cheat_values(score: &Score) -> bool {
+    match score.mode() {
+        GameMode::CHEAT_OSU => {
+            if score.uses_aim_correction && score.aim_correction_value > 60 {
+                return false;
+            }
+            if score.uses_timewarp || score.timewarp_value != -1.0 {
+                return false;
+            }
+            if score.uses_cs_changer {
+                return false;
+            }
+
+            true
+        },
+        GameMode::CHEAT_CHEAT_OSU => {
+            if score.uses_aim_correction && score.aim_correction_value > 80 {
+                return false;
+            }
+            if score.uses_timewarp && score.timewarp_value < 90.0 {
+                return false;
+            }
+
+            true
+        },
+        _ => true,
     }
 }

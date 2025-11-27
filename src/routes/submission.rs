@@ -5,6 +5,7 @@ use axum::{
 };
 
 use crate::constants::SubmissionStatus;
+use crate::dto::submission::{ScoreHeader, SubmissionFields};
 use crate::models::Score;
 use crate::models::User;
 use crate::repository;
@@ -12,55 +13,9 @@ use crate::state::AppState;
 use crate::usecases::beatmap::ensure_local_osu_file;
 use crate::usecases::password::verify_password;
 use crate::usecases::score::{
-    calculate_accuracy, calculate_score_performance, calculate_status, decrypt_score_data,
+    bind_cheat_values, calculate_accuracy, calculate_score_performance, calculate_status,
+    decrypt_score_data, validate_cheat_values,
 };
-
-#[derive(Debug, Clone)]
-struct ScoreHeader {
-    map_md5: String,
-    username: String,
-}
-
-impl ScoreHeader {
-    fn from_decrypted(score_data: &[String]) -> Option<Self> {
-        if score_data.len() < 2 {
-            return None;
-        }
-
-        Some(Self {
-            map_md5: score_data[0].clone(),
-            username: score_data[1].trim().to_string(),
-        })
-    }
-}
-
-#[derive(Default)]
-struct SubmissionFields {
-    exited_out: bool,
-    fail_time: i32,
-    visual_settings_b64: String,
-    updated_beatmap_hash: String,
-    storyboard_md5: Option<String>,
-    iv_b64: Vec<u8>,
-    unique_ids: String,
-    score_time: i32,
-    password_md5: String,
-    osu_version: String,
-    client_hash_b64: Vec<u8>,
-
-    // refx original sin
-    aim_value: i32,
-    ar_value: f32,
-    aim: bool,
-    arc: bool,
-    hdr: bool,
-    cs: bool,
-    tw: bool,
-    twval: f32,
-    refx: bool,
-    score_data_b64: Vec<u8>,
-    replay_file: Vec<u8>,
-}
 
 async fn authenticate_user(
     state: &AppState,
@@ -134,6 +89,8 @@ pub async fn submit_score(
             "s" => fields.client_hash_b64 = content.to_vec(),
 
             // refx original sin
+            // NOTE: values will never be None / 0 if refx, since the client (refx)
+            //       always submits value
             "acval" => fields.aim_value = text.parse().unwrap_or(0),
             "arval" => fields.ar_value = text.parse().unwrap_or(0.0),
             "ac" => fields.aim = text == "1" || text.to_lowercase() == "true",
@@ -184,6 +141,17 @@ pub async fn submit_score(
     //       would be fun, but for now, i will (?) complete this first.
     // ref: https://github.com/remeliah/meat-my-beat-i/blob/0121e875e142dbb7278ca4b171dd8c1095e26fb0/app/api/domains/osu.py#L719-L769
     //      https://github.com/remeliah/meat-my-beat-i/blob/main/app/usecases/ac.py
+
+    bind_cheat_values(&mut score, &fields);
+
+    if fields.refx && !validate_cheat_values(&score) {
+        // TODO: log to webhook
+
+        // NOTE: it's not a good idea to return here,
+        //       we let them submit since its possibly their client's submission error.
+        //       or theres a big flaw on the client that ano (me) need to fix
+        //       god i dont want to open up rider
+    }
 
     score.acc = calculate_accuracy(&score);
 
