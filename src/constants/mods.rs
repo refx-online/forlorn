@@ -1,5 +1,4 @@
 use bitflags::bitflags;
-use std::collections::HashMap;
 
 bitflags! {
     #[derive(Default, Copy, Clone, PartialEq, Eq, Hash)]

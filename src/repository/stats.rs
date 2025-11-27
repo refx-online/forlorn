@@ -22,10 +22,7 @@ pub async fn fetch_by_user_mode(
     Ok(stats)
 }
 
-pub async fn fetch_total_scores(
-    db: &DbPoolManager,
-    stats: &Stats
-) -> Result<Vec<(f64, f64)>> {
+pub async fn fetch_total_scores(db: &DbPoolManager, stats: &Stats) -> Result<Vec<(f64, f64)>> {
     let scores = sqlx::query_as::<_, (f64, f64)>(
         r#"
         select s.acc, s.pp 
@@ -44,10 +41,7 @@ pub async fn fetch_total_scores(
     Ok(scores)
 }
 
-pub async fn fetch_bonus_count(
-    db: &DbPoolManager,
-    stats: &Stats
-) -> Result<i64> {
+pub async fn fetch_bonus_count(db: &DbPoolManager, stats: &Stats) -> Result<i64> {
     let count = sqlx::query_scalar::<_, i64>(
         "select count(*) from scores s \
          right join maps b on s.map_md5 = b.md5 \

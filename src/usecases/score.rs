@@ -10,8 +10,8 @@ use crate::constants::SubmissionStatus;
 use crate::dto::submission::ScoreSubmission;
 use crate::infrastructure::database::DbPoolManager;
 use crate::infrastructure::omajinai::{PerformanceRequest, calculate_pp};
-use crate::repository;
 use crate::models::Score;
+use crate::repository;
 
 pub fn decrypt_score_data(
     score_data_b64: &[u8],
@@ -103,13 +103,9 @@ pub fn calculate_accuracy(score: &Score) -> f32 {
 }
 
 pub async fn calculate_status(db: &DbPoolManager, new_score: &mut Score) -> Result<Option<Score>> {
-    let previous_best = repository::score::fetch_best(
-        db,
-        new_score.userid,
-        &new_score.map_md5,
-        new_score.mode,
-    )
-    .await?;
+    let previous_best =
+        repository::score::fetch_best(db, new_score.userid, &new_score.map_md5, new_score.mode)
+            .await?;
 
     match previous_best {
         Some(mut prev_best) => {
@@ -135,30 +131,17 @@ pub async fn calculate_status(db: &DbPoolManager, new_score: &mut Score) -> Resu
     }
 }
 
-pub async fn calculate_placement(
-    db: &DbPoolManager, 
-    score: &Score,
-) -> u32 {
-    let num_better_scores = repository::score::fetch_num_better_scores(
-        db, 
-        score
-    )
-        .await;
+pub async fn calculate_placement(db: &DbPoolManager, score: &Score) -> u32 {
+    let num_better_scores = repository::score::fetch_num_better_scores(db, score).await;
 
     match num_better_scores {
         Ok(count) => count,
-        Err(_) => 0
+        Err(_) => 0,
     }
 }
 
-pub async fn update_any_preexisting_personal_best(
-    db: &DbPoolManager,
-    score: &Score
-) -> () {
-    let _ = repository::score::update_preexisting_personal_best(
-        db, score
-    )
-        .await;
+pub async fn update_any_preexisting_personal_best(db: &DbPoolManager, score: &Score) -> () {
+    let _ = repository::score::update_preexisting_personal_best(db, score).await;
 }
 
 pub async fn calculate_score_performance(

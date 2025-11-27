@@ -2,11 +2,11 @@ use axum::{
     body::Bytes,
     extract::{Multipart, State},
     http::{HeaderMap, StatusCode},
-    response::{Response, IntoResponse},
+    response::{IntoResponse, Response},
 };
 use std::collections::HashMap;
 
-use crate::constants::{SubmissionStatus, RankedStatus};
+use crate::constants::{RankedStatus, SubmissionStatus};
 use crate::dto::submission::{ScoreHeader, ScoreSubmission};
 use crate::infrastructure::redis::publish::announce;
 use crate::models::Score;
@@ -16,8 +16,9 @@ use crate::state::AppState;
 use crate::usecases::beatmap::ensure_local_osu_file;
 use crate::usecases::password::verify_password;
 use crate::usecases::score::{
-    bind_cheat_values, calculate_accuracy, calculate_score_performance, calculate_status, calculate_placement,
-    decrypt_score_data, validate_cheat_values, update_any_preexisting_personal_best
+    bind_cheat_values, calculate_accuracy, calculate_placement, calculate_score_performance,
+    calculate_status, decrypt_score_data, update_any_preexisting_personal_best,
+    validate_cheat_values,
 };
 
 async fn authenticate_user(
@@ -38,9 +39,7 @@ async fn authenticate_user(
     }
 }
 
-async fn parse_typed_multipart(
-    multipart: &mut Multipart,
-) -> Result<ScoreSubmission, Response> {
+async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScoreSubmission, Response> {
     let mut score_data_b64: Option<Vec<u8>> = None;
     let mut replay_file: Option<Vec<u8>> = None;
 
@@ -76,44 +75,75 @@ async fn parse_typed_multipart(
         .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: replay file").into_response())?;
 
     let submission = ScoreSubmission {
-        exited_out: fields.get("x").map(|b| String::from_utf8_lossy(b).to_string()),
-        fail_time: fields.get("ft")
+        exited_out: fields
+            .get("x")
+            .map(|b| String::from_utf8_lossy(b).to_string()),
+        fail_time: fields
+            .get("ft")
             .and_then(|b| String::from_utf8_lossy(b).parse().ok())
             .unwrap_or(0),
-        visual_settings_b64: fields.get("fs").map(|b| String::from_utf8_lossy(b).to_string()),
-        updated_beatmap_hash: fields.get("bmk").map(|b| String::from_utf8_lossy(b).to_string()),
-        storyboard_md5: fields.get("sbk").map(|b| String::from_utf8_lossy(b).to_string()),
-        iv_b64: fields.get("iv")
+        visual_settings_b64: fields
+            .get("fs")
+            .map(|b| String::from_utf8_lossy(b).to_string()),
+        updated_beatmap_hash: fields
+            .get("bmk")
+            .map(|b| String::from_utf8_lossy(b).to_string()),
+        storyboard_md5: fields
+            .get("sbk")
+            .map(|b| String::from_utf8_lossy(b).to_string()),
+        iv_b64: fields
+            .get("iv")
             .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: iv").into_response())?
             .clone(),
-        unique_ids: fields.get("c1").map(|b| String::from_utf8_lossy(b).to_string()),
-        score_time: fields.get("st")
+        unique_ids: fields
+            .get("c1")
+            .map(|b| String::from_utf8_lossy(b).to_string()),
+        score_time: fields
+            .get("st")
             .and_then(|b| String::from_utf8_lossy(b).parse().ok())
             .unwrap_or(0),
-        password_md5: fields.get("pass")
+        password_md5: fields
+            .get("pass")
             .map(|b| String::from_utf8_lossy(b).to_string())
             .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: password").into_response())?,
-        osu_version: fields.get("osuver")
+        osu_version: fields
+            .get("osuver")
             .map(|b| String::from_utf8_lossy(b).to_string())
             .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: osu version").into_response())?,
-        client_hash_b64: fields.get("s")
+        client_hash_b64: fields
+            .get("s")
             .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: client hash").into_response())?
             .clone(),
-        aim_value: fields.get("acval")
+        aim_value: fields
+            .get("acval")
             .and_then(|b| String::from_utf8_lossy(b).parse().ok())
             .unwrap_or(0),
-        ar_value: fields.get("arval")
+        ar_value: fields
+            .get("arval")
             .and_then(|b| String::from_utf8_lossy(b).parse().ok())
             .unwrap_or(0.0),
-        aim: fields.get("ac").map(|b| String::from_utf8_lossy(b).to_string()),
-        arc: fields.get("ar").map(|b| String::from_utf8_lossy(b).to_string()),
-        hdr: fields.get("hdrem").map(|b| String::from_utf8_lossy(b).to_string()),
-        cs: fields.get("cs").map(|b| String::from_utf8_lossy(b).to_string()),
-        tw: fields.get("tw").map(|b| String::from_utf8_lossy(b).to_string()),
-        twval: fields.get("twval")
+        aim: fields
+            .get("ac")
+            .map(|b| String::from_utf8_lossy(b).to_string()),
+        arc: fields
+            .get("ar")
+            .map(|b| String::from_utf8_lossy(b).to_string()),
+        hdr: fields
+            .get("hdrem")
+            .map(|b| String::from_utf8_lossy(b).to_string()),
+        cs: fields
+            .get("cs")
+            .map(|b| String::from_utf8_lossy(b).to_string()),
+        tw: fields
+            .get("tw")
+            .map(|b| String::from_utf8_lossy(b).to_string()),
+        twval: fields
+            .get("twval")
             .and_then(|b| String::from_utf8_lossy(b).parse().ok())
             .unwrap_or(0.0),
-        refx: fields.get("refx").map(|b| String::from_utf8_lossy(b).to_string()),
+        refx: fields
+            .get("refx")
+            .map(|b| String::from_utf8_lossy(b).to_string()),
         score_data_b64,
         replay_file,
     };
@@ -156,10 +186,11 @@ pub async fn submit_score(
         None => return (StatusCode::BAD_REQUEST, "error: score data < 2").into_response(),
     };
 
-    let user = match authenticate_user(&state, &submission.password_md5, &score_header.username).await {
-        Ok(user) => user,
-        Err(response) => return response,
-    };
+    let user =
+        match authenticate_user(&state, &submission.password_md5, &score_header.username).await {
+            Ok(user) => user,
+            Err(response) => return response,
+        };
 
     let beatmap = match repository::beatmap::fetch_by_md5(&state.db, &score_header.map_md5).await {
         Ok(Some(beatmap)) => beatmap,
@@ -213,8 +244,7 @@ pub async fn submit_score(
     score.time_elapsed = if score.passed() { submission.score_time } else { submission.fail_time };
 
     if score.status == SubmissionStatus::Best.as_i32() {
-        if score.rank == 1 && !user.restricted()
-        {
+        if score.rank == 1 && !user.restricted() {
             // TODO: log to webhook
             let mut s = format!(
                 "\x01ACTION achieved #1 on {} with {:.2}% for {:.2}pp",
@@ -224,7 +254,7 @@ pub async fn submit_score(
             );
 
             if score.mods != 0 {
-                s.insert_str(1, &format!("{}", score.mods().repr()));
+                s.insert_str(1, &score.mods().repr().to_string());
             }
 
             let _ = announce::announce(&state.redis, &s);
