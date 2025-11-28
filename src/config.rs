@@ -8,6 +8,7 @@ pub struct Config {
     pub database: DatabaseConfig,
     pub redis: RedisConfig,
     pub omajinai: OmajinaiConfig,
+    pub webhook: DiscordWebhookConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,6 +40,12 @@ pub struct OmajinaiConfig {
     pub beatmap_path: PathBuf,
 }
 
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscordWebhookConfig {
+    pub score: String,
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -46,6 +53,7 @@ impl Default for Config {
             database: DatabaseConfig::default(),
             redis: RedisConfig::default(),
             omajinai: OmajinaiConfig::default(),
+            webhook: DiscordWebhookConfig::default(),
         }
     }
 }
@@ -81,6 +89,14 @@ impl Default for OmajinaiConfig {
             base_url: "http://localhost:9292".into(),
             beatmap_service_url: "https://b.remeliah.cyou".into(),
             beatmap_path: PathBuf::from(".data/osu"),
+        }
+    }
+}
+
+impl Default for DiscordWebhookConfig {
+    fn default() -> Self {
+        Self {
+            score: "https://discord.com/api/webhooks/123".into(),
         }
     }
 }
@@ -136,6 +152,10 @@ impl Config {
         }
         if let Ok(omajinai_beatmap_path) = std::env::var("OMAJINAI_BEATMAP_PATH") {
             config.omajinai.beatmap_path = PathBuf::from(omajinai_beatmap_path);
+        }
+
+        if let Ok(discord_score_webhook) = std::env::var("DISCORD_SCORE_WEBHOOK") {
+            config.webhook.score = discord_score_webhook;
         }
 
         Ok(config)

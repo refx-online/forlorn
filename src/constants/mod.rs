@@ -8,3 +8,4 @@ pub use mode::GameMode;
 pub use mods::Mods;
 pub use status::RankedStatus;
 pub use status::SubmissionStatus;
+pub use grade::Grade;

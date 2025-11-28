@@ -27,6 +27,6 @@ pub struct User {
 
 impl User {
     pub fn restricted(&self) -> bool {
-        !Privileges::from_bits_truncate(self.privilege as u32).contains(Privileges::UNRESTRICTED)
+        !Privileges::from_bits_retain(self.privilege as u32).contains(Privileges::UNRESTRICTED)
     }
 }

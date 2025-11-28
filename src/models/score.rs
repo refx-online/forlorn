@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-use crate::constants::{GameMode, Mods, SubmissionStatus};
+use crate::constants::{GameMode, Mods, Grade};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Score {
@@ -59,6 +59,8 @@ pub struct Score {
     pub rank: u32,
     #[sqlx(skip)]
     pub stars: f32,
+    #[sqlx(skip)]
+    pub passed: bool,
 }
 
 impl Score {
@@ -82,6 +84,7 @@ impl Score {
             perfect: data[9] == "True",
             grade: data[10].clone(),
             mods: data[11].parse().ok()?,
+            passed: data[12] == "True",
             mode: data[13].parse().ok()?,
 
             #[allow(deprecated)]
@@ -112,15 +115,15 @@ impl Score {
         })
     }
 
-    pub fn passed(&self) -> bool {
-        self.status != SubmissionStatus::Failed.as_i32()
-    }
-
     pub fn mode(&self) -> GameMode {
         GameMode::from_params(self.mode as u8, self.mods())
     }
 
     pub fn mods(&self) -> Mods {
         Mods::from_bits_truncate(self.mods as u32)
+    }
+
+    pub fn grade(&self) -> Grade {
+        Grade::from_str(&self.grade)
     }
 }

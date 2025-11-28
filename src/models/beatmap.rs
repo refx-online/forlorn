@@ -36,7 +36,7 @@ impl Beatmap {
 
     pub fn url(&self) -> String {
         // todo: use env
-        format!("http://osu.remeliah.cyou/beatmaps/{}", self.id)
+        format!("http://remeliah.cyou/beatmaps/{}", self.id)
     }
 
     pub fn embed(&self) -> String {

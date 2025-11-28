@@ -7,6 +7,7 @@ mod repository;
 mod routes;
 mod state;
 mod usecases;
+mod utils;
 
 use dotenvy::dotenv;
 

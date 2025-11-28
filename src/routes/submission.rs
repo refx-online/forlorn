@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use crate::constants::{RankedStatus, SubmissionStatus};
 use crate::dto::submission::{ScoreHeader, ScoreSubmission};
 use crate::infrastructure::redis::publish::announce;
+use crate::infrastructure::webhook::{Embed, Author, Footer, Thumbnail, Webhook};
 use crate::models::Score;
 use crate::models::User;
 use crate::repository;
@@ -20,6 +21,7 @@ use crate::usecases::score::{
     calculate_status, decrypt_score_data, update_any_preexisting_personal_best,
     validate_cheat_values,
 };
+use crate::utils::{fmt_n, fmt_f};
 
 async fn authenticate_user(
     state: &AppState,
@@ -202,6 +204,13 @@ pub async fn submit_score(
         None => return (StatusCode::BAD_REQUEST, "error: score").into_response(),
     };
 
+    // What the fuck.
+    // i genuinely forgot about score.map_md5 and i somehow
+    // used that on some usecases functions without realizing its not "setted" yet
+    // this is actually a lesson for me to not name fields poorly and misunderstanding ;d
+    // TODO: REMOVE
+    score.map_md5 = score_header.map_md5;
+
     let _ = repository::user::update_latest_activity(&state.db, user.id).await;
 
     // idea: maybe, just maybe i could create another service that
@@ -227,7 +236,7 @@ pub async fn submit_score(
         (score.pp, score.stars) =
             calculate_score_performance(&state.config.omajinai, &score, beatmap.id).await;
 
-        if score.passed() {
+        if score.passed {
             if let Ok(Some(prev_best)) = calculate_status(&state.db, &mut score).await {
                 let _ = repository::score::update_status(&state.db, prev_best.id, prev_best.status)
                     .await;
@@ -241,7 +250,7 @@ pub async fn submit_score(
         }
     }
 
-    score.time_elapsed = if score.passed() { submission.score_time } else { submission.fail_time };
+    score.time_elapsed = if score.passed { submission.score_time } else { submission.fail_time };
 
     if score.status == SubmissionStatus::Best.as_i32() {
         if score.rank == 1 && !user.restricted() {
@@ -258,6 +267,56 @@ pub async fn submit_score(
             }
 
             let _ = announce::announce(&state.redis, &s).await;
+
+            let prev_holder = 
+                repository::user::fetch_prev_n1(&state.db, &score)
+                    .await
+                    .ok()
+                    .flatten();
+
+            // TODO: move these to usecases
+            let mut desc = format!(
+                "{} ▸ {}pp ▸ {}\n{:.2}% ▸ [{}/{}/{}/{}x] ▸ {}/{}x ▸ {}",
+                score.grade().into_discord(),
+                fmt_f(score.pp), // formatted to match python
+                fmt_n(score.score), // formatted to match python
+                score.acc,
+                score.n300,
+                score.n100,
+                score.n50,
+                score.nmiss,
+                score.max_combo,
+                beatmap.max_combo,
+                score.mods().repr()
+            );
+
+            if let Some((prev_id, prev_name)) = prev_holder {
+                desc.push_str(&format!("\n\npreviously held by [{}](https://remeliah.cyou/u/{})", prev_name, prev_id));
+            }
+            
+            // TODO: pp record announce
+
+            let embed = Embed::new()
+                .title(format!(
+                    "{} - {:.2}★",
+                    beatmap.full_name(), score.stars
+                ))
+                .url(beatmap.url())
+                .description(desc)
+                .color(2829617) // gray
+                .author(Author::new().name(format!("set a new #1 worth {:.2}pp", score.pp)))
+                .thumbnail(Thumbnail::new().url(format!(
+                    "https://assets.ppy.sh/beatmaps/{}/covers/card.jpg",
+                    beatmap.set_id
+                )))
+                .footer(Footer::new(format!("{} | forlorn", score.mode().repr()))); // trole
+
+            let webhook = Webhook::new(&state.config.webhook.score)
+                .username(user.name)
+                .avatar_url(format!("https://a.remeliah.cyou/{}", user.id))
+                .add_embed(embed);
+
+            let _ = webhook.post().await;
         }
 
         update_any_preexisting_personal_best(&state.db, &score).await;

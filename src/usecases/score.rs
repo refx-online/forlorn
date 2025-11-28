@@ -134,7 +134,7 @@ pub async fn calculate_status(db: &DbPoolManager, new_score: &mut Score) -> Resu
 pub async fn calculate_placement(db: &DbPoolManager, score: &Score) -> u32 {
     let num_better_scores = repository::score::fetch_num_better_scores(db, score).await;
 
-    num_better_scores.unwrap_or_default()
+    num_better_scores.unwrap_or_default() + 1
 }
 
 pub async fn update_any_preexisting_personal_best(db: &DbPoolManager, score: &Score) -> () {

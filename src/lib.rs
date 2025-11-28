@@ -7,3 +7,4 @@ pub mod repository;
 pub mod routes;
 pub mod state;
 pub mod usecases;
+pub mod utils;
