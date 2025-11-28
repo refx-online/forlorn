@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use crate::constants::{RankedStatus, SubmissionStatus};
 use crate::dto::submission::{ScoreHeader, ScoreSubmission};
 use crate::infrastructure::redis::publish::announce;
-use crate::infrastructure::webhook::{Embed, Author, Footer, Thumbnail, Webhook};
+use crate::infrastructure::webhook::{Author, Embed, Footer, Thumbnail, Webhook};
 use crate::models::Score;
 use crate::models::User;
 use crate::repository;
@@ -21,7 +21,7 @@ use crate::usecases::score::{
     calculate_status, decrypt_score_data, update_any_preexisting_personal_best,
     validate_cheat_values,
 };
-use crate::utils::{fmt_n, fmt_f};
+use crate::utils::{fmt_f, fmt_n};
 
 async fn authenticate_user(
     state: &AppState,
@@ -268,17 +268,16 @@ pub async fn submit_score(
 
             let _ = announce::announce(&state.redis, &s).await;
 
-            let prev_holder = 
-                repository::user::fetch_prev_n1(&state.db, &score)
-                    .await
-                    .ok()
-                    .flatten();
+            let prev_holder = repository::user::fetch_prev_n1(&state.db, &score)
+                .await
+                .ok()
+                .flatten();
 
             // TODO: move these to usecases
             let mut desc = format!(
                 "{} ▸ {}pp ▸ {}\n{:.2}% ▸ [{}/{}/{}/{}x] ▸ {}/{}x ▸ {}",
-                score.grade().into_discord(),
-                fmt_f(score.pp), // formatted to match python
+                score.grade().discord_emoji(),
+                fmt_f(score.pp),    // formatted to match python
                 fmt_n(score.score), // formatted to match python
                 score.acc,
                 score.n300,
@@ -291,16 +290,17 @@ pub async fn submit_score(
             );
 
             if let Some((prev_id, prev_name)) = prev_holder {
-                desc.push_str(&format!("\n\npreviously held by [{}](https://remeliah.cyou/u/{})", prev_name, prev_id));
+                #[allow(clippy::uninlined_format_args)]
+                desc.push_str(&format!(
+                    "\n\npreviously held by [{}](https://remeliah.cyou/u/{})",
+                    prev_name, prev_id
+                ));
             }
-            
+
             // TODO: pp record announce
 
             let embed = Embed::new()
-                .title(format!(
-                    "{} - {:.2}★",
-                    beatmap.full_name(), score.stars
-                ))
+                .title(format!("{} - {:.2}★", beatmap.full_name(), score.stars))
                 .url(beatmap.url())
                 .description(desc)
                 .color(2829617) // gray

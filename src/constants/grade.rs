@@ -14,7 +14,7 @@ pub enum Grade {
 }
 
 impl Grade {
-    pub fn into_discord(&self) -> &'static str {
+    pub fn discord_emoji(&self) -> &'static str {
         match self {
             Grade::F => "<:grade_f:1251961173482405936>",
             Grade::D => "<:grade_d:1251961153874296832>",
@@ -29,6 +29,7 @@ impl Grade {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s {
             "F" => Grade::F,

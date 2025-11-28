@@ -19,21 +19,20 @@ pub async fn fetch_by_name(db: &DbPoolManager, username: &str) -> Result<Option<
 }
 
 pub async fn fetch_prev_n1(
-    db: &DbPoolManager, 
-    score: &Score
+    db: &DbPoolManager,
+    score: &Score,
 ) -> sqlx::Result<Option<(i32, String)>> {
-    let prev_n1 = 
-    sqlx::query_as::<_, (i32, String)>(
-    "select u.id, name from users u 
+    let prev_n1 = sqlx::query_as::<_, (i32, String)>(
+        "select u.id, name from users u 
             inner join scores s on u.id = s.userid 
             where s.map_md5 = ? and s.mode = ? 
             and s.status = 2 and u.priv & 1 
-            order by s.pp desc limit 1"
+            order by s.pp desc limit 1",
     )
-        .bind(&score.map_md5)
-        .bind(score.mode)
-        .fetch_optional(db.as_ref())
-        .await?;
+    .bind(&score.map_md5)
+    .bind(score.mode)
+    .fetch_optional(db.as_ref())
+    .await?;
 
     Ok(prev_n1)
 }

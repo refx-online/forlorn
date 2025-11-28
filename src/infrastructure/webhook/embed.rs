@@ -1,16 +1,8 @@
 use serde::Serialize;
 
-use super::{
-    Footer, 
-    Image,
-    Thumbnail, 
-    Video, 
-    Provider, 
-    Author, 
-    Field
-};
+use super::{Author, Field, Footer, Image, Provider, Thumbnail, Video};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Default)]
 pub struct Embed {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
@@ -77,7 +69,6 @@ impl Embed {
         self.url = Some(url.into());
         self
     }
-
 
     pub fn color(mut self, color: u32) -> Self {
         self.color = color;

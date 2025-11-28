@@ -40,7 +40,6 @@ pub struct OmajinaiConfig {
     pub beatmap_path: PathBuf,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscordWebhookConfig {
     pub score: String,
