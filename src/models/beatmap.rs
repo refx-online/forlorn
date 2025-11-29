@@ -41,10 +41,6 @@ impl Beatmap {
         format!("http://remeliah.cyou/beatmaps/{}", self.id)
     }
 
-    pub fn embed(&self) -> String {
-        format!("[{} {}]", self.url(), self.full_name())
-    }
-
     pub fn has_leaderboard(&self) -> bool {
         [
             RankedStatus::Qualified.as_i32(),

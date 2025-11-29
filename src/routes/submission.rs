@@ -257,19 +257,7 @@ pub async fn submit_score(
 
     if score.status == SubmissionStatus::Best.as_i32() {
         if beatmap.has_leaderboard() && score.rank == 1 && !user.restricted() {
-            // TODO: log to webhook
-            let mut s = format!(
-                "\x01ACTION achieved #1 on {} with {:.2}% for {:.2}pp",
-                beatmap.embed(),
-                score.acc,
-                score.pp,
-            );
-
-            if score.mods != 0 {
-                s.push_str(&format!(" +{}", &score.mods().repr()));
-            }
-
-            let _ = announce::announce(&state.redis, &s).await;
+            let _ = announce::announce(&state.redis, score.id).await;
 
             let prev_holder = repository::user::fetch_prev_n1(&state.db, &score)
                 .await
