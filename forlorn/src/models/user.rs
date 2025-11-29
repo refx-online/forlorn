@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::constants::privileges::Privileges;
+use crate::constants::Privileges;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct User {

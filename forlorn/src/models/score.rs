@@ -1,9 +1,8 @@
-use chrono::NaiveDateTime;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-use crate::constants::{GameMode, Grade, Mods};
+use crate::constants::{GameMode, Grade, Mods, SubmissionStatus};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Score {
@@ -115,6 +114,46 @@ impl Score {
         })
     }
 
+    /*
+    pub fn compute_online_checksum(
+        &self,
+        user: &User,
+        osu_version: &str,
+        osu_client_hash: &str,
+        storyboard_checksum: &str,
+    ) -> String {
+        let formatted_time = self.play_time.format("%y%m%d%H%M%S").to_string();
+
+        let perfect = if self.perfect { "True" } else { "False" };
+        let passed = if self.passed { "True" } else { "False" };
+
+        let input = format!(
+            "chickenmcnuggets{}o15{}{}smustard{}{}uu{}{}{}{}{}{}{}Q{}{}{}{}{}{}",
+            self.n100 + self.n300,
+            self.n50,
+            self.ngeki,
+            self.nkatu,
+            self.nmiss,
+            self.map_md5,
+            self.max_combo,
+            perfect,
+            user.name,
+            self.score,
+            self.grade,
+            self.mods,
+            passed,
+            self.mode,
+            osu_version,
+            formatted_time,
+            osu_client_hash,
+            storyboard_checksum
+        );
+
+        let digest = Md5::digest(input.as_bytes());
+        format!("{:x}", digest)
+    }
+    */
+
     pub fn mode(&self) -> GameMode {
         GameMode::from_params(self.mode as u8, self.mods())
     }
@@ -125,5 +164,9 @@ impl Score {
 
     pub fn grade(&self) -> Grade {
         Grade::from_str(&self.grade)
+    }
+
+    pub fn status(&self) -> SubmissionStatus {
+        SubmissionStatus::from_i32(self.status)
     }
 }

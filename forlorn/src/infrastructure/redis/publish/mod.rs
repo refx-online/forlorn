@@ -2,6 +2,7 @@ use crate::infrastructure::redis::RedisConnectionManager;
 
 pub mod announce;
 pub mod refresh_stats;
+pub mod restrict;
 
 pub async fn publish(
     redis: &RedisConnectionManager,

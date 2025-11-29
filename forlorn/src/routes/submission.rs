@@ -9,7 +9,7 @@ use webhook::{Author, Embed, Footer, Thumbnail, Webhook};
 
 use crate::constants::{Grade, RankedStatus, SubmissionStatus};
 use crate::dto::submission::{ScoreHeader, ScoreSubmission};
-use crate::infrastructure::redis::publish::{announce, refresh_stats};
+use crate::infrastructure::redis::publish::{announce, refresh_stats, restrict};
 use crate::models::Score;
 use crate::models::User;
 use crate::repository;
@@ -331,7 +331,7 @@ pub async fn submit_score(
                 // NOTE: not returning here since it would break submission (duh)
             }
         } else {
-            // todo: restrict
+            let _ = restrict::restrict(&state.redis, user.id, "score submitter?");
         }
     }
 
@@ -421,7 +421,14 @@ pub async fn submit_score(
         let _ = increment_playcount(&state.db, &mut beatmap, score.passed).await;
     }
 
-    // todo: use tracing to log "submitted"
+    tracing::info!(
+        "[{}] {} submitted a score! ({}, {}pp | {}pp)",
+        score.mode().repr(),
+        user.name,
+        score.status().repr(),
+        score.pp.round(),
+        stats.pp,
+    );
 
     let charts = build_submission_charts(&score, &beatmap, &stats, &prev_stats, &state).await;
 

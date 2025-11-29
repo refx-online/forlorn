@@ -10,6 +10,23 @@ impl SubmissionStatus {
     pub fn as_i32(&self) -> i32 {
         *self as i32
     }
+
+    pub fn from_i32(status: i32) -> Self {
+        match status {
+            0 => SubmissionStatus::Failed,
+            1 => SubmissionStatus::Submitted,
+            2 => SubmissionStatus::Best,
+            _ => SubmissionStatus::Failed,
+        }
+    }
+
+    pub fn repr(&self) -> &'static str {
+        match self {
+            SubmissionStatus::Failed => "Failed",
+            SubmissionStatus::Submitted => "Submitted",
+            SubmissionStatus::Best => "Best",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
