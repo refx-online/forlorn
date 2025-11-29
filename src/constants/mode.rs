@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use crate::constants::mods::Mods;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -23,13 +21,13 @@ pub enum GameMode {
 }
 
 impl GameMode {
-    pub fn from_params(mode_vn: u8, mods: Mods) -> GameMode {
-        if mods.contains(Mods::TOUCHSCREEN) && mode_vn == GameMode::VN_OSU as u8 {
+    pub fn from_params(mode: u8, mods: Mods) -> GameMode {
+        if mods.contains(Mods::TOUCHSCREEN) && mode == GameMode::VN_OSU as u8 {
             return GameMode::TOUCH_DEVICE_OSU;
-        } else if mods.contains(Mods::AUTOPILOT) && mode_vn == GameMode::VN_OSU as u8 {
+        } else if mods.contains(Mods::AUTOPILOT) && mode == GameMode::VN_OSU as u8 {
             return GameMode::AP_OSU;
-        } else if mods.contains(Mods::RELAX) && mode_vn != GameMode::VN_MANIA as u8 {
-            return match mode_vn {
+        } else if mods.contains(Mods::RELAX) && mode != GameMode::VN_MANIA as u8 {
+            return match mode {
                 0 => GameMode::RX_OSU,
                 1 => GameMode::RX_TAIKO,
                 2 => GameMode::RX_CATCH,
@@ -37,11 +35,13 @@ impl GameMode {
             };
         }
 
-        match mode_vn {
+        match mode {
             0 => GameMode::VN_OSU,
             1 => GameMode::VN_TAIKO,
             2 => GameMode::VN_CATCH,
             3 => GameMode::VN_MANIA,
+            12 => GameMode::CHEAT_OSU,
+            16 => GameMode::CHEAT_CHEAT_OSU,
             _ => GameMode::VN_OSU,
         }
     }

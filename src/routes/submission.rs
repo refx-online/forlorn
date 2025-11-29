@@ -207,11 +207,12 @@ pub async fn submit_score(
     };
 
     // What the fuck.
-    // i genuinely forgot about score.map_md5 and i somehow
+    // i genuinely forgot about score.map_md5 & score.userid and i somehow
     // used that on some usecases functions without realizing its not "setted" yet
     // this is actually a lesson for me to not name fields poorly and misunderstanding ;d
     // TODO: REMOVE
     score.map_md5 = score_header.map_md5;
+    score.userid = user.id;
 
     let _ = repository::user::update_latest_activity(&state.db, user.id).await;
 
@@ -356,22 +357,22 @@ pub async fn submit_score(
 
     stats.playtime += get_computed_playtime(&score, &beatmap).await;
     stats.plays += 1;
-    stats.tscore += score.score;
-    stats.total_hits += score.n300 + score.n100 + score.n50;
+    stats.tscore += score.score as u64;
+    stats.total_hits += score.n300 as u32 + score.n100 as u32 + score.n50 as u32;
 
     if score.mode().ngeki_nkatu() {
-        stats.total_hits += score.ngeki + score.nkatu;
+        stats.total_hits += score.ngeki as u32 + score.nkatu as u32;
     }
 
     let mut stats_updates = HashMap::new();
     stats_updates.insert("plays", stats.plays);
     stats_updates.insert("playtime", stats.playtime);
-    stats_updates.insert("tscore", stats.tscore);
+    stats_updates.insert("tscore", stats.tscore as u32);
     stats_updates.insert("total_hits", stats.total_hits);
 
     if score.passed && beatmap.has_leaderboard() {
-        if score.max_combo > stats.max_combo {
-            stats.max_combo = score.max_combo;
+        if score.max_combo as u32 > stats.max_combo {
+            stats.max_combo = score.max_combo as u32;
         }
 
         if beatmap.awards_ranked_pp() && score.status == SubmissionStatus::Best.as_i32() {
@@ -399,7 +400,7 @@ pub async fn submit_score(
                 stats.increment_grade(score.grade());
             }
 
-            stats.rscore += additional_rscore;
+            stats.rscore += additional_rscore as u64;
 
             if (recalculate(&state.db, &mut stats).await).is_err() {
                 return (StatusCode::INTERNAL_SERVER_ERROR, "error: recalculate").into_response();

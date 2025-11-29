@@ -2,8 +2,8 @@
 #[repr(i32)]
 pub enum SubmissionStatus {
     Failed = 0,
-    Best = 1,
-    Submitted = 2,
+    Submitted = 1,
+    Best = 2,
 }
 
 impl SubmissionStatus {

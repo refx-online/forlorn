@@ -54,10 +54,10 @@ pub async fn update_preexisting_personal_best(db: &DbPoolManager, score: &Score)
 pub async fn fetch_num_better_scores(db: &DbPoolManager, score: &Score) -> Result<u32> {
     // NOTE: only checks with pp instead of score.
     let num_better_scores = sqlx::query_scalar(
-        "select count(*) as c from scores s 
+        "select count(*) from scores s 
          inner join users u on u.id = s.userid
          where s.map_md5 = ? and s.mode = ?
-         and s.status = 2 and u.priv & 1
+         and s.status = 2 and (u.priv & 1) != 0
          and s.pp > ?",
     )
     .bind(&score.map_md5)
@@ -66,13 +66,16 @@ pub async fn fetch_num_better_scores(db: &DbPoolManager, score: &Score) -> Resul
     .fetch_one(db.as_ref())
     .await?;
 
-    Ok(num_better_scores)
+    Ok(num_better_scores + 1)
 }
 
 pub async fn insert(db: &DbPoolManager, score: &Score, beatmap: &Beatmap) -> Result<i32> {
     let res = sqlx::query(
-        "insert into scores (map_md5, map_status, score, xp_gained, pp, acc, max_combo, mods, n300, n100, n50, nmiss, ngeki, nkatu, grade, status, mode, play_time, time_elapsed, client_flags, userid, perfect, online_checksum, aim_value, ar_value, aim, arc, cs, tw, twval, hdr, pinned) \
-         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "insert into scores (
+         map_md5, map_status, score, xp_gained, pp, acc, max_combo, mods, n300, n100, n50, nmiss, ngeki, nkatu, 
+         grade, status, mode, play_time, time_elapsed, client_flags, userid, perfect, online_checksum, 
+         aim_value, ar_value, aim, arc, cs, tw, twval, hdr, pinned
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
         .bind(&beatmap.md5)
         .bind(beatmap.status)

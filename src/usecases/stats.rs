@@ -24,7 +24,7 @@ pub async fn recalculate(db: &DbPoolManager, stats: &mut Stats) -> Result<()> {
     stats.acc =
         (total_acc * (100.0 / (20.0 * (1.0 - 0.95_f32.powi((last_idx + 1) as i32))))) / 100.0;
 
-    stats.pp = (total_pp + calculate_bonus(db, stats).await?) as i32;
+    stats.pp = (total_pp + calculate_bonus(db, stats).await?) as u32;
 
     Ok(())
 }
@@ -38,9 +38,9 @@ pub async fn calculate_bonus(db: &DbPoolManager, stats: &Stats) -> Result<f32> {
     Ok(bonus_pp)
 }
 
-pub async fn get_computed_playtime(score: &Score, beatmap: &Beatmap) -> i32 {
+pub async fn get_computed_playtime(score: &Score, beatmap: &Beatmap) -> u32 {
     if score.passed {
-        beatmap.total_length
+        beatmap.total_length as u32
     } else {
         let mut time_elapsed = score.time_elapsed as f32;
 
@@ -54,6 +54,6 @@ pub async fn get_computed_playtime(score: &Score, beatmap: &Beatmap) -> i32 {
             return 0;
         }
 
-        time_elapsed as i32
+        time_elapsed as u32
     }
 }
