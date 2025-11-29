@@ -7,6 +7,6 @@ pub mod status;
 pub use grade::Grade;
 pub use mode::GameMode;
 pub use mods::Mods;
+pub use privileges::Privileges;
 pub use status::RankedStatus;
 pub use status::SubmissionStatus;
-pub use privileges::Privileges;

@@ -277,6 +277,8 @@ pub async fn submit_score(
                 beatmap.max_combo,
                 score.mods().repr()
             );
+
+            #[allow(clippy::uninlined_format_args)]
             let content: String = if let Some((prev_id, prev_name)) = prev_holder {
                 format!(
                     "\n\npreviously held by [{}](https://remeliah.cyou/u/{})",
@@ -331,7 +333,7 @@ pub async fn submit_score(
                 // NOTE: not returning here since it would break submission (duh)
             }
         } else {
-            let _ = restrict::restrict(&state.redis, user.id, "score submitter?");
+            let _ = restrict::restrict(&state.redis, user.id, "score submitter?").await;
         }
     }
 
