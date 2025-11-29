@@ -32,6 +32,7 @@ pub struct Embed {
     pub fields: Vec<Field>,
 }
 
+#[allow(unused)]
 fn default_color() -> u32 {
     0x000000
 }

@@ -5,11 +5,11 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use std::collections::HashMap;
+use webhook::{Author, Embed, Footer, Thumbnail, Webhook};
 
 use crate::constants::{Grade, RankedStatus, SubmissionStatus};
 use crate::dto::submission::{ScoreHeader, ScoreSubmission};
 use crate::infrastructure::redis::publish::{announce, refresh_stats};
-use crate::infrastructure::webhook::{Author, Embed, Footer, Thumbnail, Webhook};
 use crate::models::Score;
 use crate::models::User;
 use crate::repository;

@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use reqwest::Error;
 use serde::Serialize;
 use std::sync::LazyLock;

@@ -1,24 +1,7 @@
-[package]
-name = "forlorn"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = [
+    "forlorn",
+    "webhook",
+]
 
-[dependencies]
-axum = { version = "0.8.7", features = ["multipart"] }
-bitflags = "2.8.0"
-chrono = { version = "0.4", features = ["default", "serde"] }
-dotenvy = "0.15"
-sqlx = { version = "0.8.6", features = ["runtime-tokio", "chrono", "rust_decimal", "mysql"] }
-tokio = { version = "1.45.1", features = ["net", "rt-multi-thread", "macros"] }
-redis = { version = "0.32.5", features = ["aio", "tokio-comp"] }
-
-base64 = "0.22.1"
-simple-rijndael = { git = "https://github.com/Pure-Peace/simple-rijndael", rev = "901d7ef30f51867cbd26903c4170ee1425accb36" }
-md-5 = "0.10.6"
-
-reqwest = { version = "0.12.19", features = ["json"] }
-serde = "1.0"
-serde_json = "1.0"
-
-anyhow = "1.0"
-bcrypt = "0.15"
+resolver = "2"
