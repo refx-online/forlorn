@@ -263,7 +263,7 @@ pub async fn submit_score(
                 .flatten();
 
             // TODO: move these to usecases
-            let mut desc = format!(
+            let desc = format!(
                 "{} ▸ {}pp ▸ {}\n{:.2}% ▸ [{}/{}/{}/{}x] ▸ {}/{}x ▸ {}",
                 score.grade().discord_emoji(),
                 fmt_f(score.pp),    // formatted to match python
@@ -277,14 +277,14 @@ pub async fn submit_score(
                 beatmap.max_combo,
                 score.mods().repr()
             );
-
-            if let Some((prev_id, prev_name)) = prev_holder {
-                #[allow(clippy::uninlined_format_args)]
-                desc.push_str(&format!(
+            let content: String = if let Some((prev_id, prev_name)) = prev_holder {
+                format!(
                     "\n\npreviously held by [{}](https://remeliah.cyou/u/{})",
                     prev_name, prev_id
-                ));
-            }
+                )
+            } else {
+                String::new()
+            };
 
             // TODO: pp record announce
 
@@ -302,6 +302,7 @@ pub async fn submit_score(
 
             let webhook = Webhook::new(&state.config.webhook.score)
                 .username(&user.name)
+                .content(content)
                 .avatar_url(format!("https://a.remeliah.cyou/{}", user.id))
                 .add_embed(embed);
 
