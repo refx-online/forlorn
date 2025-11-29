@@ -41,11 +41,11 @@ impl Stats {
 
     pub fn decrement_grade(&mut self, grade: Grade) {
         match grade {
-            Grade::XH => self.xh_count = (self.xh_count - 1).max(0),
-            Grade::X => self.x_count = (self.x_count - 1).max(0),
-            Grade::SH => self.sh_count = (self.sh_count - 1).max(0),
-            Grade::S => self.s_count = (self.s_count - 1).max(0),
-            Grade::A => self.a_count = (self.a_count - 1).max(0),
+            Grade::XH => self.xh_count -= 1,
+            Grade::X => self.x_count -= 1,
+            Grade::SH => self.sh_count -= 1,
+            Grade::S => self.s_count -= 1,
+            Grade::A => self.a_count -= 1,
             _ => {},
         }
     }

@@ -79,23 +79,15 @@ pub async fn build_submission_charts(
             prev_best.max_combo,
             score.max_combo,
         ));
-        charts.push(chart_entry(
-            "accuracy",
-            prev_best.acc,
-            score.acc,
-        ));
-        charts.push(chart_entry(
-            "pp",
-            prev_best.pp,
-            score.pp,
-        ));
+        charts.push(chart_entry("accuracy", prev_best.acc, score.acc));
+        charts.push(chart_entry("pp", prev_best.pp.round(), score.pp.round()));
     } else {
         charts.push(chart_entry("rank", 0, score.rank));
         charts.push(chart_entry("rankedScore", 0, score.score));
         charts.push(chart_entry("totalScore", 0, score.score));
         charts.push(chart_entry("maxCombo", 0, score.max_combo));
         charts.push(chart_entry("accuracy", 0.0, score.acc));
-        charts.push(chart_entry("pp", 0.0, score.pp));
+        charts.push(chart_entry("pp", 0.0, score.pp.round()));
     }
 
     charts.push(format!("onlineScoreId:{}", score.id));
@@ -112,11 +104,7 @@ pub async fn build_submission_charts(
         prev_stats.max_combo,
         stats.max_combo,
     ));
-    charts.push(chart_entry(
-        "accuracy",
-        prev_stats.acc,
-        stats.acc,
-    ));
+    charts.push(chart_entry("accuracy", prev_stats.acc, stats.acc));
     charts.push(chart_entry("pp", prev_stats.pp, stats.pp));
     charts.push(format!("achievements-new:{achievements_str}"));
 

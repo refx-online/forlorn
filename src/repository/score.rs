@@ -53,7 +53,7 @@ pub async fn update_preexisting_personal_best(db: &DbPoolManager, score: &Score)
 
 pub async fn fetch_num_better_scores(db: &DbPoolManager, score: &Score) -> Result<u32> {
     // NOTE: only checks with pp instead of score.
-    let num_better_scores = sqlx::query_scalar(
+    let num_better_scores: i64 = sqlx::query_scalar(
         "select count(*) from scores s 
          inner join users u on u.id = s.userid
          where s.map_md5 = ? and s.mode = ?
@@ -66,7 +66,7 @@ pub async fn fetch_num_better_scores(db: &DbPoolManager, score: &Score) -> Resul
     .fetch_one(db.as_ref())
     .await?;
 
-    Ok(num_better_scores + 1)
+    Ok((num_better_scores + 1) as u32)
 }
 
 pub async fn insert(db: &DbPoolManager, score: &Score, beatmap: &Beatmap) -> Result<i32> {
