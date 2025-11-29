@@ -257,8 +257,6 @@ pub async fn submit_score(
 
     if score.status == SubmissionStatus::Best.as_i32() {
         if beatmap.has_leaderboard() && score.rank == 1 && !user.restricted() {
-            let _ = announce::announce(&state.redis, score.id).await;
-
             let prev_holder = repository::user::fetch_prev_n1(&state.db, &score)
                 .await
                 .ok()
@@ -319,6 +317,10 @@ pub async fn submit_score(
     };
 
     if score.passed {
+        if score.rank == 1 && beatmap.has_leaderboard() {
+            let _ = announce::announce(&state.redis, score.id).await;
+        }
+
         const MIN_REPLAY_SIZE: usize = 24;
 
         if submission.replay_file.len() >= MIN_REPLAY_SIZE {

@@ -9,9 +9,23 @@ pub async fn publish(
     payload: &str,
 ) -> redis::RedisResult<()> {
     let mut conn = redis.lock().await;
-    redis::cmd("PUBLISH")
+    match redis::cmd("PUBLISH")
         .arg(channel)
         .arg(payload)
         .query_async(&mut *conn)
         .await
+    {
+        Ok(result) => Ok(result),
+        Err(_) => {
+            drop(conn);
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+            let mut conn = redis.lock().await;
+            redis::cmd("PUBLISH")
+                .arg(channel)
+                .arg(payload)
+                .query_async(&mut *conn)
+                .await
+        },
+    }
 }

@@ -31,6 +31,8 @@ impl GameMode {
                 0 => GameMode::RX_OSU,
                 1 => GameMode::RX_TAIKO,
                 2 => GameMode::RX_CATCH,
+                12 => GameMode::CHEAT_OSU,
+                16 => GameMode::CHEAT_CHEAT_OSU,
                 _ => GameMode::VN_OSU,
             };
         }
