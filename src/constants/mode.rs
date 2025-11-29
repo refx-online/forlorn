@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::constants::mods::Mods;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -46,6 +48,13 @@ impl GameMode {
 
     pub fn as_vanilla(self) -> u8 {
         self as u8 % 4
+    }
+
+    pub fn ngeki_nkatu(self) -> bool {
+        matches!(
+            self,
+            GameMode::VN_TAIKO | GameMode::VN_MANIA | GameMode::RX_TAIKO
+        )
     }
 
     /// TODO: create a macro to handle cases like this

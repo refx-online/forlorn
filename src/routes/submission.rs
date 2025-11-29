@@ -6,22 +6,23 @@ use axum::{
 };
 use std::collections::HashMap;
 
-use crate::constants::{RankedStatus, SubmissionStatus};
+use crate::constants::{Grade, RankedStatus, SubmissionStatus};
 use crate::dto::submission::{ScoreHeader, ScoreSubmission};
-use crate::infrastructure::redis::publish::announce;
+use crate::infrastructure::redis::publish::{announce, refresh_stats};
 use crate::infrastructure::webhook::{Author, Embed, Footer, Thumbnail, Webhook};
 use crate::models::Score;
 use crate::models::User;
 use crate::repository;
 use crate::state::AppState;
-use crate::usecases::beatmap::ensure_local_osu_file;
+use crate::usecases::beatmap::{ensure_local_osu_file, increment_playcount};
 use crate::usecases::password::verify_password;
 use crate::usecases::score::{
     bind_cheat_values, calculate_accuracy, calculate_placement, calculate_score_performance,
     calculate_status, decrypt_score_data, update_any_preexisting_personal_best,
     validate_cheat_values,
 };
-use crate::utils::{fmt_f, fmt_n};
+use crate::usecases::stats::{get_computed_playtime, recalculate};
+use crate::utils::{build_submission_charts, fmt_f, fmt_n};
 
 async fn authenticate_user(
     state: &AppState,
@@ -194,10 +195,11 @@ pub async fn submit_score(
             Err(response) => return response,
         };
 
-    let beatmap = match repository::beatmap::fetch_by_md5(&state.db, &score_header.map_md5).await {
-        Ok(Some(beatmap)) => beatmap,
-        _ => return (StatusCode::BAD_REQUEST, "error: beatmap").into_response(),
-    };
+    let mut beatmap =
+        match repository::beatmap::fetch_by_md5(&state.db, &score_header.map_md5).await {
+            Ok(Some(beatmap)) => beatmap,
+            _ => return (StatusCode::BAD_REQUEST, "error: beatmap").into_response(),
+        };
 
     let mut score = match Score::from_submission(&score_data[2..]) {
         Some(score) => score,
@@ -253,7 +255,7 @@ pub async fn submit_score(
     score.time_elapsed = if score.passed { submission.score_time } else { submission.fail_time };
 
     if score.status == SubmissionStatus::Best.as_i32() {
-        if score.rank == 1 && !user.restricted() {
+        if beatmap.has_leaderboard() && score.rank == 1 && !user.restricted() {
             // TODO: log to webhook
             let mut s = format!(
                 "\x01ACTION achieved #1 on {} with {:.2}% for {:.2}pp",
@@ -312,7 +314,7 @@ pub async fn submit_score(
                 .footer(Footer::new(format!("{} | forlorn", score.mode().repr()))); // trole
 
             let webhook = Webhook::new(&state.config.webhook.score)
-                .username(user.name)
+                .username(&user.name)
                 .avatar_url(format!("https://a.remeliah.cyou/{}", user.id))
                 .add_embed(embed);
 
@@ -322,7 +324,114 @@ pub async fn submit_score(
         update_any_preexisting_personal_best(&state.db, &score).await;
     }
 
-    // todo
+    score.id = match repository::score::insert(&state.db, &score, &beatmap).await {
+        Ok(id) => id,
+        _ => return (StatusCode::INTERNAL_SERVER_ERROR, "error: insert").into_response(),
+    };
 
-    (StatusCode::OK, "ok").into_response()
+    if score.passed {
+        const MIN_REPLAY_SIZE: usize = 24;
+
+        if submission.replay_file.len() >= MIN_REPLAY_SIZE {
+            let replay_path = state.config.replay_path.join(format!("{}.osr", score.id));
+
+            if (tokio::fs::write(&replay_path, &submission.replay_file).await).is_err() {
+                // NOTE: not returning here since it would break submission (duh)
+            }
+        } else {
+            // todo: restrict
+        }
+    }
+
+    // update player & beatmap stats
+    let mut stats =
+        match repository::stats::fetch_by_user_mode(&state.db, &state.redis, user.id, score.mode)
+            .await
+        {
+            Ok(Some(stats)) => stats,
+            _ => return (StatusCode::INTERNAL_SERVER_ERROR, "error: stats").into_response(),
+        };
+
+    let prev_stats = stats.clone();
+
+    stats.playtime += get_computed_playtime(&score, &beatmap).await;
+    stats.plays += 1;
+    stats.tscore += score.score;
+    stats.total_hits += score.n300 + score.n100 + score.n50;
+
+    if score.mode().ngeki_nkatu() {
+        stats.total_hits += score.ngeki + score.nkatu;
+    }
+
+    let mut stats_updates = HashMap::new();
+    stats_updates.insert("plays", stats.plays);
+    stats_updates.insert("playtime", stats.playtime);
+    stats_updates.insert("tscore", stats.tscore);
+    stats_updates.insert("total_hits", stats.total_hits);
+
+    if score.passed && beatmap.has_leaderboard() {
+        if score.max_combo > stats.max_combo {
+            stats.max_combo = score.max_combo;
+        }
+
+        if beatmap.awards_ranked_pp() && score.status == SubmissionStatus::Best.as_i32() {
+            // TODO: i think i need to place prev_best on score models since i frequently call this
+            let prev_best =
+                repository::score::fetch_best(&state.db, user.id, &beatmap.md5, score.mode)
+                    .await
+                    .ok()
+                    .flatten();
+
+            let mut additional_rscore = score.score;
+            if let Some(ref pb) = prev_best {
+                additional_rscore -= pb.score;
+
+                if score.grade() != pb.grade() {
+                    if score.grade() >= Grade::A {
+                        stats.increment_grade(score.grade());
+                    }
+
+                    if pb.grade() >= Grade::A {
+                        stats.decrement_grade(pb.grade());
+                    }
+                }
+            } else if score.grade() >= Grade::A {
+                stats.increment_grade(score.grade());
+            }
+
+            stats.rscore += additional_rscore;
+
+            if (recalculate(&state.db, &mut stats).await).is_err() {
+                return (StatusCode::INTERNAL_SERVER_ERROR, "error: recalculate").into_response();
+            }
+
+            // TODO: send notification to player
+
+            if let Ok(new_rank) = repository::stats::update_rank(
+                &state.redis,
+                &stats,
+                &user.country,
+                user.restricted(),
+            )
+            .await
+            {
+                stats.rank = new_rank as i32;
+            }
+        }
+    }
+
+    if (repository::stats::save(&state.db, &stats).await).is_err() {
+        return (StatusCode::INTERNAL_SERVER_ERROR, "error: save stats").into_response();
+    }
+
+    if !user.restricted() {
+        let _ = refresh_stats::refresh_stats(&state.redis, user.id).await;
+        let _ = increment_playcount(&state.db, &mut beatmap, score.passed).await;
+    }
+
+    // todo: use tracing to log "submitted"
+
+    let charts = build_submission_charts(&score, &beatmap, &stats, &prev_stats, &state).await;
+
+    (StatusCode::OK, charts.into_bytes()).into_response()
 }

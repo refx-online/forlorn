@@ -10,10 +10,10 @@ use crate::models::Beatmap;
 pub async fn increment_playcount(
     db: &DbPoolManager,
     beatmap: &mut Beatmap,
-    passcount: bool,
+    passed: bool,
 ) -> Result<()> {
     beatmap.plays += 1;
-    if passcount {
+    if passed {
         beatmap.passes += 1;
     }
 

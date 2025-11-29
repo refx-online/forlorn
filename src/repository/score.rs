@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::constants::SubmissionStatus;
 use crate::infrastructure::database::DbPoolManager;
-use crate::models::Score;
+use crate::models::{Beatmap, Score};
 
 pub async fn fetch_best(
     db: &DbPoolManager,
@@ -69,12 +69,13 @@ pub async fn fetch_num_better_scores(db: &DbPoolManager, score: &Score) -> Resul
     Ok(num_better_scores)
 }
 
-pub async fn insert(db: &DbPoolManager, score: &Score) -> Result<()> {
-    sqlx::query(
-        "insert into scores (map_md5, score, xp_gained, pp, acc, max_combo, mods, n300, n100, n50, nmiss, ngeki, nkatu, grade, status, mode, play_time, time_elapsed, client_flags, userid, perfect, online_checksum, aim_value, ar_value, aim, arc, cs, tw, twval, hdr, pinned) \
-         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+pub async fn insert(db: &DbPoolManager, score: &Score, beatmap: &Beatmap) -> Result<i32> {
+    let res = sqlx::query(
+        "insert into scores (map_md5, map_status, score, xp_gained, pp, acc, max_combo, mods, n300, n100, n50, nmiss, ngeki, nkatu, grade, status, mode, play_time, time_elapsed, client_flags, userid, perfect, online_checksum, aim_value, ar_value, aim, arc, cs, tw, twval, hdr, pinned) \
+         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
-        .bind(&score.map_md5)
+        .bind(&beatmap.md5)
+        .bind(beatmap.status)
         .bind(score.score)
         .bind(score.xp_gained)
         .bind(score.pp)
@@ -108,5 +109,5 @@ pub async fn insert(db: &DbPoolManager, score: &Score) -> Result<()> {
         .execute(db.as_ref())
         .await?;
 
-    Ok(())
+    Ok(res.last_insert_id() as i32)
 }

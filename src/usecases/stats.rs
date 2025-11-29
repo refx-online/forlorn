@@ -1,7 +1,8 @@
 use anyhow::Result;
 
+use crate::constants::Mods;
 use crate::infrastructure::database::DbPoolManager;
-use crate::models::Stats;
+use crate::models::{Beatmap, Score, Stats};
 use crate::repository;
 
 pub async fn recalculate(db: &DbPoolManager, stats: &mut Stats) -> Result<()> {
@@ -37,6 +38,22 @@ pub async fn calculate_bonus(db: &DbPoolManager, stats: &Stats) -> Result<f32> {
     Ok(bonus_pp)
 }
 
-pub async fn save(db: &DbPoolManager, stats: &Stats) -> Result<()> {
-    repository::stats::save(db, stats).await
+pub async fn get_computed_playtime(score: &Score, beatmap: &Beatmap) -> i32 {
+    if score.passed {
+        beatmap.total_length
+    } else {
+        let mut time_elapsed = score.time_elapsed as f32;
+
+        if score.mods().contains(Mods::DOUBLETIME) {
+            time_elapsed /= 1.5;
+        } else if score.mods().contains(Mods::HALFTIME) {
+            time_elapsed /= 0.75;
+        }
+
+        if time_elapsed > beatmap.total_length as f32 {
+            return 0;
+        }
+
+        time_elapsed as i32
+    }
 }

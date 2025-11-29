@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+use crate::constants::RankedStatus;
+
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Beatmap {
     pub server: String,
@@ -41,5 +43,19 @@ impl Beatmap {
 
     pub fn embed(&self) -> String {
         format!("[{} {}]", self.url(), self.full_name())
+    }
+
+    pub fn has_leaderboard(&self) -> bool {
+        [
+            RankedStatus::Qualified.as_i32(),
+            RankedStatus::Ranked.as_i32(),
+            RankedStatus::Approved.as_i32(),
+            RankedStatus::Loved.as_i32(),
+        ]
+        .contains(&self.status)
+    }
+
+    pub fn awards_ranked_pp(&self) -> bool {
+        [RankedStatus::Ranked.as_i32(), RankedStatus::Approved.as_i32()].contains(&self.status)
     }
 }

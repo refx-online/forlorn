@@ -15,10 +15,7 @@ impl SubmissionStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(i32)]
 pub enum RankedStatus {
-    Inactive = -3,
-    NotSubmitted = -1,
     Pending = 0,
-    UpdateAvailable = 1,
     Ranked = 2,
     Approved = 3,
     Qualified = 4,

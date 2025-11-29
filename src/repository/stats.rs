@@ -7,19 +7,25 @@ use crate::models::Stats;
 
 pub async fn fetch_by_user_mode(
     db: &DbPoolManager,
+    redis: &RedisConnectionManager,
     userid: i32,
-    mode: i8,
+    mode: i32,
 ) -> Result<Option<Stats>> {
-    let stats = sqlx::query_as::<_, Stats>(
+    let mut stats = match sqlx::query_as::<_, Stats>(
         "select id, mode, tscore, rscore, pp, plays, playtime, acc, max_combo, total_hits, replay_views, xh_count, x_count, sh_count, s_count, a_count, xp \
          from stats where id = ? and mode = ?"
     )
     .bind(userid)
     .bind(mode)
     .fetch_optional(db.as_ref())
-    .await?;
+    .await? {
+        Some(stats) => stats,
+        None => return Ok(None),
+    };
 
-    Ok(stats)
+    stats.rank = get_global_rank(redis, &stats).await.unwrap_or(0) as i32;
+
+    Ok(Some(stats))
 }
 
 pub async fn fetch_total_scores(db: &DbPoolManager, stats: &Stats) -> Result<Vec<(f64, f64)>> {
@@ -66,19 +72,25 @@ pub async fn get_global_rank(redis: &RedisConnectionManager, stats: &Stats) -> R
     Ok(rank.map(|r| r as usize + 1).unwrap_or(0))
 }
 
-pub async fn get_country_rank(
+pub async fn update_rank(
     redis: &RedisConnectionManager,
     stats: &Stats,
     country: &str,
+    is_restricted: bool,
 ) -> Result<usize> {
-    let leaderboard = format!("bancho:leaderboard:{}:{}", stats.mode, country);
-    let mut conn = redis.lock().await;
+    if !is_restricted {
+        let mut conn = redis.lock().await;
 
-    let rank: Option<u64> = conn
-        .zrevrank::<_, _, Option<u64>>(&leaderboard, &stats.id.to_string())
-        .await?;
+        let global_leaderboard = format!("bancho:leaderboard:{}", stats.mode);
+        conn.zadd::<_, _, _, ()>(&global_leaderboard, stats.id.to_string(), stats.pp)
+            .await?;
 
-    Ok(rank.map(|r| r as usize + 1).unwrap_or(0))
+        let country_leaderboard = format!("bancho:leaderboard:{}:{}", stats.mode, country);
+        conn.zadd::<_, _, _, ()>(&country_leaderboard, stats.id.to_string(), stats.pp)
+            .await?;
+    }
+
+    get_global_rank(redis, stats).await
 }
 
 pub async fn save(db: &DbPoolManager, stats: &Stats) -> Result<()> {

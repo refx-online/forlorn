@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use axum::body::Bytes;
 
 #[derive(Debug, Clone)]
@@ -40,7 +42,7 @@ pub struct ScoreSubmission {
     pub hdr: Option<String>,
     pub cs: Option<String>,
     pub tw: Option<String>,
-    pub twval: f32,
+    pub twval: f32, // why the fuck is this a float?
     pub refx: Option<String>,
     pub score_data_b64: Vec<u8>,
     pub replay_file: Vec<u8>,

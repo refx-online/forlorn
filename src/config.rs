@@ -5,6 +5,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub port: u16,
+    pub replay_path: PathBuf,
     pub database: DatabaseConfig,
     pub redis: RedisConfig,
     pub omajinai: OmajinaiConfig,
@@ -49,6 +50,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             port: 3030,
+            replay_path: PathBuf::new(),
             database: DatabaseConfig::default(),
             redis: RedisConfig::default(),
             omajinai: OmajinaiConfig::default(),
@@ -106,6 +108,9 @@ impl Config {
 
         if let Ok(port) = std::env::var("PORT") {
             config.port = port.parse()?;
+        }
+        if let Ok(replay_path) = std::env::var("REPLAY_PATH") {
+            config.replay_path = PathBuf::from(replay_path);
         }
 
         if let Ok(db_host) = std::env::var("DATABASE_HOST") {
