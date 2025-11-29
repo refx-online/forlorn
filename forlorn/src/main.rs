@@ -21,6 +21,8 @@ use infrastructure::redis;
 use routes::create_routes;
 use state::AppState;
 
+use tracing_subscriber::EnvFilter;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
@@ -38,7 +40,11 @@ async fn main() -> Result<()> {
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = TcpListener::bind(&addr).await?;
 
-    println!("forlorn running on {addr}");
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
+    tracing::info!("forlorn running on {addr}");
 
     axum::serve(listener, app).await?;
 
