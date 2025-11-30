@@ -6,7 +6,7 @@ use crate::constants::{GameMode, Grade, Mods, SubmissionStatus};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Score {
-    pub id: i32,
+    pub id: u64,
     pub map_md5: String,
     pub score: i32,
     pub xp_gained: i32,

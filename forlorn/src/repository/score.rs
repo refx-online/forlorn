@@ -26,7 +26,7 @@ pub async fn fetch_best(
     Ok(score)
 }
 
-pub async fn update_status(db: &DbPoolManager, score_id: i32, status: i32) -> Result<()> {
+pub async fn update_status(db: &DbPoolManager, score_id: u64, status: i32) -> Result<()> {
     sqlx::query("update scores set status = ? where id = ?")
         .bind(status)
         .bind(score_id)
@@ -38,7 +38,7 @@ pub async fn update_status(db: &DbPoolManager, score_id: i32, status: i32) -> Re
 
 pub async fn update_preexisting_personal_best(db: &DbPoolManager, score: &Score) -> Result<()> {
     sqlx::query(
-        "update scores set status 1 
+        "update scores set status = 1 
          where status = 2 and map_md5 = ?
          and userid = ? and mode = ?",
     )
@@ -69,7 +69,7 @@ pub async fn fetch_num_better_scores(db: &DbPoolManager, score: &Score) -> Resul
     Ok((num_better_scores + 1) as u32)
 }
 
-pub async fn insert(db: &DbPoolManager, score: &Score, beatmap: &Beatmap) -> Result<i32> {
+pub async fn insert(db: &DbPoolManager, score: &Score, beatmap: &Beatmap) -> Result<u64> {
     let res = sqlx::query(
         "insert into scores (
          map_md5, map_status, score, xp_gained, pp, acc, max_combo, mods, n300, n100, n50, nmiss, ngeki, nkatu, 
@@ -112,5 +112,5 @@ pub async fn insert(db: &DbPoolManager, score: &Score, beatmap: &Beatmap) -> Res
         .execute(db.as_ref())
         .await?;
 
-    Ok(res.last_insert_id() as i32)
+    Ok(res.last_insert_id())
 }
