@@ -1,5 +1,6 @@
-use anyhow::Result;
 use std::sync::LazyLock;
+
+use anyhow::Result;
 
 use crate::config::OmajinaiConfig;
 

@@ -11,3 +11,5 @@ trailing_comma = "Vertical"
 struct_lit_width = 40
 struct_variant_width = 40
 indent_style = "Block"
+group_imports = "StdExternalCrate"
+imports_granularity = "Crate"

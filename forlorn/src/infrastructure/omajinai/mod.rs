@@ -1,6 +1,7 @@
+use std::sync::LazyLock;
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::sync::LazyLock;
 
 use crate::config::OmajinaiConfig;
 

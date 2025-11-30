@@ -1,7 +1,9 @@
-use crate::models::{Beatmap, Score, Stats};
-use crate::repository;
-use crate::state::AppState;
-use crate::usecases::achievement::check_and_unlock_achievements;
+use crate::{
+    models::{Beatmap, Score, Stats},
+    repository,
+    state::AppState,
+    usecases::achievement::check_and_unlock_achievements,
+};
 
 // todo: trait
 

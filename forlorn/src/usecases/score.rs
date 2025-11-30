@@ -1,17 +1,18 @@
 use anyhow::Result;
 use base64::prelude::*;
-use simple_rijndael::Errors;
-use simple_rijndael::impls::RijndaelCbc;
-use simple_rijndael::paddings::Pkcs7Padding;
+use simple_rijndael::{Errors, impls::RijndaelCbc, paddings::Pkcs7Padding};
 
-use crate::config::OmajinaiConfig;
-use crate::constants::GameMode;
-use crate::constants::SubmissionStatus;
-use crate::dto::submission::ScoreSubmission;
-use crate::infrastructure::database::DbPoolManager;
-use crate::infrastructure::omajinai::{PerformanceRequest, calculate_pp};
-use crate::models::Score;
-use crate::repository;
+use crate::{
+    config::OmajinaiConfig,
+    constants::{GameMode, SubmissionStatus},
+    dto::submission::ScoreSubmission,
+    infrastructure::{
+        database::DbPoolManager,
+        omajinai::{PerformanceRequest, calculate_pp},
+    },
+    models::Score,
+    repository,
+};
 
 pub fn decrypt_score_data(
     score_data_b64: &[u8],

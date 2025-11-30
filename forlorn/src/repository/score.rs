@@ -1,8 +1,10 @@
 use anyhow::Result;
 
-use crate::constants::SubmissionStatus;
-use crate::infrastructure::database::DbPoolManager;
-use crate::models::{Beatmap, Score};
+use crate::{
+    constants::SubmissionStatus,
+    infrastructure::database::DbPoolManager,
+    models::{Beatmap, Score},
+};
 
 pub async fn fetch_best(
     db: &DbPoolManager,

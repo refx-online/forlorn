@@ -1,9 +1,11 @@
 use anyhow::Result;
 
-use crate::constants::Mods;
-use crate::infrastructure::database::DbPoolManager;
-use crate::models::{Beatmap, Score, Stats};
-use crate::repository;
+use crate::{
+    constants::Mods,
+    infrastructure::database::DbPoolManager,
+    models::{Beatmap, Score, Stats},
+    repository,
+};
 
 pub async fn recalculate(db: &DbPoolManager, stats: &mut Stats) -> Result<()> {
     let scores = repository::stats::fetch_total_scores(db, stats).await?;

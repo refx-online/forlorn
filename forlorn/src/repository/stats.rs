@@ -1,9 +1,10 @@
 use anyhow::Result;
 use redis::AsyncCommands;
 
-use crate::infrastructure::database::DbPoolManager;
-use crate::infrastructure::redis::RedisConnectionManager;
-use crate::models::Stats;
+use crate::{
+    infrastructure::{database::DbPoolManager, redis::RedisConnectionManager},
+    models::Stats,
+};
 
 pub async fn fetch_by_user_mode(
     db: &DbPoolManager,

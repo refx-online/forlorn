@@ -1,28 +1,32 @@
+use std::collections::HashMap;
+
 use axum::{
     body::Bytes,
     extract::{Multipart, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use std::collections::HashMap;
 use webhook::{Author, Embed, Footer, Thumbnail, Webhook};
 
-use crate::constants::{Grade, RankedStatus, SubmissionStatus};
-use crate::dto::submission::{ScoreHeader, ScoreSubmission};
-use crate::infrastructure::redis::publish::{announce, refresh_stats, restrict};
-use crate::models::Score;
-use crate::models::User;
-use crate::repository;
-use crate::state::AppState;
-use crate::usecases::beatmap::{ensure_local_osu_file, increment_playcount};
-use crate::usecases::password::verify_password;
-use crate::usecases::score::{
-    bind_cheat_values, calculate_accuracy, calculate_placement, calculate_score_performance,
-    calculate_status, decrypt_score_data, update_any_preexisting_personal_best,
-    validate_cheat_values,
+use crate::{
+    constants::{Grade, RankedStatus, SubmissionStatus},
+    dto::submission::{ScoreHeader, ScoreSubmission},
+    infrastructure::redis::publish::{announce, refresh_stats, restrict},
+    models::{Score, User},
+    repository,
+    state::AppState,
+    usecases::{
+        beatmap::{ensure_local_osu_file, increment_playcount},
+        password::verify_password,
+        score::{
+            bind_cheat_values, calculate_accuracy, calculate_placement,
+            calculate_score_performance, calculate_status, decrypt_score_data,
+            update_any_preexisting_personal_best, validate_cheat_values,
+        },
+        stats::{get_computed_playtime, recalculate},
+    },
+    utils::{build_submission_charts, fmt_f, fmt_n},
 };
-use crate::usecases::stats::{get_computed_playtime, recalculate};
-use crate::utils::{build_submission_charts, fmt_f, fmt_n};
 
 async fn authenticate_user(
     state: &AppState,
@@ -205,6 +209,8 @@ pub async fn submit_score(
         Some(score) => score,
         None => return (StatusCode::BAD_REQUEST, "error: score").into_response(),
     };
+
+    score.mode = score.mode() as i32;
 
     // What the fuck.
     // i genuinely forgot about score.map_md5 & score.userid and i somehow

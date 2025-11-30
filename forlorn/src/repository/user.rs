@@ -1,8 +1,11 @@
-use anyhow::Result;
 use std::time::SystemTime;
 
-use crate::infrastructure::database::DbPoolManager;
-use crate::models::{Score, User};
+use anyhow::Result;
+
+use crate::{
+    infrastructure::database::DbPoolManager,
+    models::{Score, User},
+};
 
 pub async fn fetch_by_name(db: &DbPoolManager, username: &str) -> Result<Option<User>> {
     let user = sqlx::query_as::<_, User>(

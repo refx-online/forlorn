@@ -1,8 +1,10 @@
 use anyhow::Result;
 
-use crate::infrastructure::database::DbPoolManager;
-use crate::models::{Condition, Score};
-use crate::repository;
+use crate::{
+    infrastructure::database::DbPoolManager,
+    models::{Condition, Score},
+    repository,
+};
 
 pub async fn check_and_unlock_achievements(db: &DbPoolManager, score: &Score) -> Result<String> {
     let server_achievements = repository::achievement::fetch_all_achievements(db).await?;

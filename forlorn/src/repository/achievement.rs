@@ -1,7 +1,6 @@
 use anyhow::Result;
 
-use crate::infrastructure::database::DbPoolManager;
-use crate::models::Achievement;
+use crate::{infrastructure::database::DbPoolManager, models::Achievement};
 
 pub async fn fetch_all_achievements(db: &DbPoolManager) -> Result<Vec<Achievement>> {
     let achievements =

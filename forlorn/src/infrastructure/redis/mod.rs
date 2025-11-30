@@ -1,7 +1,7 @@
-use anyhow::Result;
-use redis::Client;
-use redis::aio::MultiplexedConnection;
 use std::sync::Arc;
+
+use anyhow::Result;
+use redis::{Client, aio::MultiplexedConnection};
 use tokio::sync::Mutex;
 
 use crate::config::RedisConfig;

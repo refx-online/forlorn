@@ -1,10 +1,9 @@
+use std::{collections::HashMap, sync::LazyLock};
+
 use anyhow::Result;
-use std::collections::HashMap;
-use std::sync::LazyLock;
 use tokio::sync::RwLock;
 
-use crate::infrastructure::database::DbPoolManager;
-use crate::models::Beatmap;
+use crate::{infrastructure::database::DbPoolManager, models::Beatmap};
 
 static BEATMAP_CACHE: LazyLock<RwLock<HashMap<String, Beatmap>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));

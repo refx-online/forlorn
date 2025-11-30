@@ -22,17 +22,29 @@ pub enum GameMode {
 
 impl GameMode {
     pub fn from_params(mode: u8, mods: Mods) -> GameMode {
-        if mods.contains(Mods::TOUCHSCREEN) && mode == GameMode::VN_OSU as u8 {
+        // i dont even know
+        if mode >= 4 {
+            return match mode {
+                4 => GameMode::RX_OSU,
+                5 => GameMode::RX_TAIKO,
+                6 => GameMode::RX_CATCH,
+                8 => GameMode::AP_OSU,
+                12 => GameMode::CHEAT_OSU,
+                16 => GameMode::CHEAT_CHEAT_OSU,
+                20 => GameMode::TOUCH_DEVICE_OSU,
+                _ => GameMode::VN_OSU,
+            };
+        }
+
+        if mods.contains(Mods::TOUCHSCREEN) && mode == 0 {
             return GameMode::TOUCH_DEVICE_OSU;
-        } else if mods.contains(Mods::AUTOPILOT) && mode == GameMode::VN_OSU as u8 {
+        } else if mods.contains(Mods::AUTOPILOT) && mode == 0 {
             return GameMode::AP_OSU;
-        } else if mods.contains(Mods::RELAX) && mode != GameMode::VN_MANIA as u8 {
+        } else if mods.contains(Mods::RELAX) && mode != 3 {
             return match mode {
                 0 => GameMode::RX_OSU,
                 1 => GameMode::RX_TAIKO,
                 2 => GameMode::RX_CATCH,
-                12 => GameMode::CHEAT_OSU,
-                16 => GameMode::CHEAT_CHEAT_OSU,
                 _ => GameMode::VN_OSU,
             };
         }
@@ -42,8 +54,6 @@ impl GameMode {
             1 => GameMode::VN_TAIKO,
             2 => GameMode::VN_CATCH,
             3 => GameMode::VN_MANIA,
-            12 => GameMode::CHEAT_OSU,
-            16 => GameMode::CHEAT_CHEAT_OSU,
             _ => GameMode::VN_OSU,
         }
     }

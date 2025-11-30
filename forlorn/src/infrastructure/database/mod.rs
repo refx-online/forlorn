@@ -1,7 +1,7 @@
-use anyhow::Result;
-use sqlx::mysql::MySqlPoolOptions;
-use sqlx::{MySql, Pool};
 use std::sync::Arc;
+
+use anyhow::Result;
+use sqlx::{MySql, Pool, mysql::MySqlPoolOptions};
 
 use crate::config::DatabaseConfig;
 

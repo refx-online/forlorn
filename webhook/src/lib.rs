@@ -1,6 +1,7 @@
+use std::sync::LazyLock;
+
 use reqwest::Error;
 use serde::Serialize;
-use std::sync::LazyLock;
 
 pub mod author;
 pub mod embed;
@@ -11,14 +12,10 @@ pub mod provider;
 pub mod thumbnail;
 pub mod video;
 
-pub use self::author::Author;
-pub use self::embed::Embed;
-pub use self::field::Field;
-pub use self::footer::Footer;
-pub use self::image::Image;
-pub use self::provider::Provider;
-pub use self::thumbnail::Thumbnail;
-pub use self::video::Video;
+pub use self::{
+    author::Author, embed::Embed, field::Field, footer::Footer, image::Image, provider::Provider,
+    thumbnail::Thumbnail, video::Video,
+};
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
 

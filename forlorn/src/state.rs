@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use crate::config::Config;
-use crate::infrastructure::database::DbPoolManager;
-use crate::infrastructure::redis::RedisConnectionManager;
+use crate::{
+    config::Config,
+    infrastructure::{database::DbPoolManager, redis::RedisConnectionManager},
+};
 
 #[derive(Clone)]
 pub struct AppState {

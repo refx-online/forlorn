@@ -9,18 +9,15 @@ mod state;
 mod usecases;
 mod utils;
 
-use dotenvy::dotenv;
+use std::sync::Arc;
 
 use anyhow::Result;
-use std::sync::Arc;
-use tokio::net::TcpListener;
-
 use config::Config;
-use infrastructure::database;
-use infrastructure::redis;
+use dotenvy::dotenv;
+use infrastructure::{database, redis};
 use routes::create_routes;
 use state::AppState;
-
+use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]

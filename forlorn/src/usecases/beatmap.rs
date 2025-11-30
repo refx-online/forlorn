@@ -1,11 +1,13 @@
-use anyhow::Result;
-use md5::{Digest, Md5};
 use std::fs;
 
-use crate::config::OmajinaiConfig;
-use crate::infrastructure::database::DbPoolManager;
-use crate::infrastructure::omajinai::beatmap::fetch_beatmap;
-use crate::models::Beatmap;
+use anyhow::Result;
+use md5::{Digest, Md5};
+
+use crate::{
+    config::OmajinaiConfig,
+    infrastructure::{database::DbPoolManager, omajinai::beatmap::fetch_beatmap},
+    models::Beatmap,
+};
 
 pub async fn increment_playcount(
     db: &DbPoolManager,
