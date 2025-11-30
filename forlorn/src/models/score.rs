@@ -169,4 +169,29 @@ impl Score {
     pub fn status(&self) -> SubmissionStatus {
         SubmissionStatus::from_i32(self.status)
     }
+
+    pub fn get_ach_stat(&self, name: &str) -> f64 {
+        match name {
+            "accuracy" => self.acc as f64,
+            "sr" => self.stars as f64,
+            "mods" => self.mods as f64,
+            "mode_vn" => self.mode().as_vanilla() as f64,
+            "combo" => self.max_combo as f64,
+            "max_combo" => self.max_combo as f64,
+            "perfect" => {
+                if self.perfect {
+                    1.0
+                } else {
+                    0.0
+                }
+            },
+            "300" => self.n300 as f64,
+            "100" => self.n100 as f64,
+            "50" => self.n50 as f64,
+            "miss" => self.nmiss as f64,
+            "geki" => self.ngeki as f64,
+            "katu" => self.nkatu as f64,
+            _ => 0.0,
+        }
+    }
 }

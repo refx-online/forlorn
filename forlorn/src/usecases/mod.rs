@@ -1,3 +1,4 @@
+pub mod achievement;
 pub mod beatmap;
 pub mod password;
 pub mod score;

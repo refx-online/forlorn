@@ -1,6 +1,7 @@
 use crate::models::{Beatmap, Score, Stats};
 use crate::repository;
 use crate::state::AppState;
+use crate::usecases::achievement::check_and_unlock_achievements;
 
 // todo: trait
 
@@ -47,12 +48,9 @@ pub async fn build_submission_charts(
 ) -> String {
     let mut charts = Vec::new();
 
-    let achievements_str = if beatmap.awards_ranked_pp() {
-        // TODO: implement achievement
-        String::new()
-    } else {
-        String::new()
-    };
+    let achievements_str = check_and_unlock_achievements(&state.db, score)
+        .await
+        .unwrap_or_default();
 
     charts.push(format!("beatmapId:{}", beatmap.id));
     charts.push(format!("beatmapSetId:{}", beatmap.set_id));
@@ -109,9 +107,4 @@ pub async fn build_submission_charts(
     charts.push(format!("achievements-new:{achievements_str}"));
 
     charts.join("|")
-}
-
-#[allow(unused)] // will be used later
-fn format_achievement_string(file: &str, name: &str, desc: &str) -> String {
-    format!("{file}+{name}+{desc}")
 }
