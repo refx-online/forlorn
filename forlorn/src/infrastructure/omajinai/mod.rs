@@ -61,7 +61,7 @@ pub async fn calculate_pp(
         }
 
         if let Some(v) = params.get_mut("mode")
-            && let Some(n) = v.as_i64() 
+            && let Some(n) = v.as_i64()
         {
             *v = serde_json::Value::from(n % 4);
         }
