@@ -92,10 +92,10 @@ impl Webhook {
             return Err(WebhookError::EmptyPayload);
         }
 
-        if let Some(content) = &self.content {
-            if content.len() > 2000 {
-                return Err(WebhookError::ContentTooLong);
-            }
+        if let Some(content) = &self.content
+            && content.len() > 2000
+        {
+            return Err(WebhookError::ContentTooLong);
         }
 
         Ok(())
