@@ -44,6 +44,7 @@ pub struct OmajinaiConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscordWebhookConfig {
     pub score: String,
+    pub debug: String, // dev server channel
 }
 
 impl Default for Config {
@@ -98,6 +99,7 @@ impl Default for DiscordWebhookConfig {
     fn default() -> Self {
         Self {
             score: "https://discord.com/api/webhooks/123".into(),
+            debug: "https://discord.com/api/webhooks/123".into(),
         }
     }
 }
@@ -160,6 +162,9 @@ impl Config {
 
         if let Ok(discord_score_webhook) = std::env::var("DISCORD_SCORE_WEBHOOK") {
             config.webhook.score = discord_score_webhook;
+        }
+        if let Ok(discord_debug_webhook) = std::env::var("DISCORD_DEBUG_WEBHOOK") {
+            config.webhook.debug = discord_debug_webhook;
         }
 
         Ok(config)

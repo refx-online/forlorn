@@ -225,7 +225,27 @@ pub async fn submit_score(
     bind_cheat_values(&mut score, &submission);
 
     if submission.refx() && !validate_cheat_values(&score) {
-        // TODO: log to webhook
+        let webhook = Webhook::new(&state.config.webhook.debug).content(format!(
+            "[{}] <{} ({})> Overcheat? (malformed cheat value) [ac={}|tw={}|cs={}]",
+            score.mode().as_str(),
+            user.name,
+            user.id,
+            score.aim_correction_value,
+            score.timewarp_value,
+            score.uses_cs_changer
+        ));
+
+        tracing::warn!(
+            "[{}] <{} ({})> submitted a malformed cheat value [ac={}|tw={}|cs={}]",
+            score.mode().as_str(),
+            user.name,
+            user.id,
+            score.aim_correction_value,
+            score.timewarp_value,
+            score.uses_cs_changer
+        );
+
+        let _ = webhook.post().await;
 
         // NOTE: it's not a good idea to return here,
         //       we let them submit since its possibly their client's submission error.
