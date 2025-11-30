@@ -39,7 +39,7 @@ bitflags! {
 }
 
 impl Mods {
-    pub fn repr(self) -> String {
+    pub fn as_str(self) -> String {
         if self.is_empty() {
             return "NM".into();
         }

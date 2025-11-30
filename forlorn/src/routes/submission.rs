@@ -275,7 +275,7 @@ pub async fn submit_score(
                 score.nmiss,
                 score.max_combo,
                 beatmap.max_combo,
-                score.mods().repr()
+                score.mods().as_str()
             );
 
             #[allow(clippy::uninlined_format_args)]
@@ -300,7 +300,7 @@ pub async fn submit_score(
                     "https://assets.ppy.sh/beatmaps/{}/covers/card.jpg",
                     beatmap.set_id
                 )))
-                .footer(Footer::new(format!("{} | forlorn", score.mode().repr()))); // trole
+                .footer(Footer::new(format!("{} | forlorn", score.mode().as_str()))); // trole
 
             let webhook = Webhook::new(&state.config.webhook.score)
                 .username(&user.name)
@@ -425,9 +425,9 @@ pub async fn submit_score(
 
     tracing::info!(
         "[{}] {} submitted a score! ({}, {}pp | {}pp)",
-        score.mode().repr(),
+        score.mode().as_str(),
         user.name,
-        score.status().repr(),
+        score.status().as_str(),
         score.pp.round(),
         stats.pp,
     );

@@ -20,7 +20,7 @@ impl SubmissionStatus {
         }
     }
 
-    pub fn repr(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             SubmissionStatus::Failed => "Failed",
             SubmissionStatus::Submitted => "Submitted",
