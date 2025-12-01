@@ -6,7 +6,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use webhook::{Author, Embed, Footer, Thumbnail, Webhook};
+use webhook::Webhook;
 
 use crate::{
     constants::{Grade, RankedStatus, SubmissionStatus},
@@ -20,12 +20,12 @@ use crate::{
         password::verify_password,
         score::{
             bind_cheat_values, calculate_accuracy, calculate_placement,
-            calculate_score_performance, calculate_status, decrypt_score_data,
+            calculate_score_performance, calculate_status, decrypt_score_data, first_place_webhook,
             update_any_preexisting_personal_best, validate_cheat_values,
         },
         stats::{get_computed_playtime, recalculate},
     },
-    utils::{build_submission_charts, fmt_f, fmt_n},
+    utils::build_submission_charts,
 };
 
 async fn authenticate_user(
@@ -288,51 +288,13 @@ pub async fn submit_score(
                 .ok()
                 .flatten();
 
-            // TODO: move these to usecases
-            let desc = format!(
-                "{} ▸ {}pp ▸ {}\n{:.2}% ▸ [{}/{}/{}/{}x] ▸ {}/{}x ▸ {}",
-                score.grade().discord_emoji(),
-                fmt_f(score.pp),    // formatted to match python
-                fmt_n(score.score), // formatted to match python
-                score.acc,
-                score.n300,
-                score.n100,
-                score.n50,
-                score.nmiss,
-                score.max_combo,
-                beatmap.max_combo,
-                score.mods().as_str()
+            let webhook = first_place_webhook(
+                &user,
+                &score,
+                &beatmap,
+                &state.config.webhook.score,
+                prev_holder,
             );
-
-            #[allow(clippy::uninlined_format_args)]
-            let content: String = if let Some((prev_id, prev_name)) = prev_holder {
-                format!(
-                    "\n\npreviously held by [{}](https://remeliah.cyou/u/{})",
-                    prev_name, prev_id
-                )
-            } else {
-                String::new()
-            };
-
-            // TODO: pp record announce
-
-            let embed = Embed::new()
-                .title(format!("{} - {:.2}★", beatmap.full_name(), score.stars))
-                .url(beatmap.url())
-                .description(desc)
-                .color(2829617) // gray
-                .author(Author::new().name(format!("set a new #1 worth {:.2}pp", score.pp)))
-                .thumbnail(Thumbnail::new().url(format!(
-                    "https://assets.ppy.sh/beatmaps/{}/covers/card.jpg",
-                    beatmap.set_id
-                )))
-                .footer(Footer::new(format!("{} | forlorn", score.mode().as_str()))); // trole
-
-            let webhook = Webhook::new(&state.config.webhook.score)
-                .username(&user.name)
-                .content(content)
-                .avatar_url(format!("https://a.remeliah.cyou/{}", user.id))
-                .add_embed(embed);
 
             let _ = webhook.post().await;
         }
@@ -384,6 +346,7 @@ pub async fn submit_score(
     }
 
     let mut stats_updates = HashMap::new();
+
     stats_updates.insert("plays", stats.plays);
     stats_updates.insert("playtime", stats.playtime);
     stats_updates.insert("tscore", stats.tscore as u32);

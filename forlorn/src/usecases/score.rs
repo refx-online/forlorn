@@ -1,6 +1,7 @@
 use anyhow::Result;
 use base64::prelude::*;
 use simple_rijndael::{Errors, impls::RijndaelCbc, paddings::Pkcs7Padding};
+use webhook::{Author, Embed, Footer, Thumbnail, Webhook};
 
 use crate::{
     config::OmajinaiConfig,
@@ -10,8 +11,9 @@ use crate::{
         database::DbPoolManager,
         omajinai::{PerformanceRequest, calculate_pp},
     },
-    models::Score,
+    models::{Beatmap, Score, User},
     repository,
+    utils::{fmt_f, fmt_n},
 };
 
 pub fn decrypt_score_data(
@@ -205,4 +207,57 @@ pub fn validate_cheat_values(score: &Score) -> bool {
         },
         _ => true,
     }
+}
+
+pub fn first_place_webhook(
+    user: &User,
+    score: &Score,
+    beatmap: &Beatmap,
+    webhook_url: &str,
+    prev_holder: Option<(i32, String)>,
+) -> Webhook {
+    let desc = format!(
+        "{} ▸ {}pp ▸ {}\n{:.2}% ▸ [{}/{}/{}/{}x] ▸ {}/{}x ▸ {}",
+        score.grade().discord_emoji(),
+        fmt_f(score.pp),    // formatted to match python
+        fmt_n(score.score), // formatted to match python
+        score.acc,
+        score.n300,
+        score.n100,
+        score.n50,
+        score.nmiss,
+        score.max_combo,
+        beatmap.max_combo,
+        score.mods().as_str()
+    );
+
+    #[allow(clippy::uninlined_format_args)]
+    let content: String = if let Some((prev_id, prev_name)) = prev_holder {
+        format!(
+            "previously held by [{}](https://remeliah.cyou/u/{})",
+            prev_name, prev_id
+        )
+    } else {
+        String::new()
+    };
+
+    // TODO: pp record announce
+
+    let embed = Embed::new()
+        .title(format!("{} - {:.2}★", beatmap.full_name(), score.stars))
+        .url(beatmap.url())
+        .description(desc)
+        .color(2829617) // gray
+        .author(Author::new().name(format!("set a new #1 worth {:.2}pp", score.pp)))
+        .thumbnail(Thumbnail::new().url(format!(
+            "https://assets.ppy.sh/beatmaps/{}/covers/card.jpg",
+            beatmap.set_id
+        )))
+        .footer(Footer::new(format!("{} | forlorn", score.mode().as_str())));
+
+    Webhook::new(webhook_url)
+        .username(&user.name)
+        .content(content)
+        .avatar_url(format!("https://a.remeliah.cyou/{}", user.id))
+        .add_embed(embed)
 }
