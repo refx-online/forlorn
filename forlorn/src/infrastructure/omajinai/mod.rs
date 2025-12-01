@@ -9,7 +9,7 @@ pub mod beatmap;
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct PerformanceRequest {
     pub beatmap_id: i32,
     pub mode: i32,
@@ -50,23 +50,13 @@ pub async fn calculate_pp(
     let mut out = Vec::with_capacity(perf_requests.len());
 
     for req in perf_requests {
-        let mut params = serde_json::Map::new();
+        let mut req = req.clone();
+        req.mode %= 4;
 
-        if let serde_json::Value::Object(map) = serde_json::to_value(req)? {
-            for (k, v) in map {
-                if !v.is_null() {
-                    params.insert(k, v);
-                }
-            }
-        }
-
-        if let Some(v) = params.get_mut("mode")
-            && let Some(n) = v.as_i64()
-        {
-            *v = serde_json::Value::from(n % 4);
-        }
-
-        let resp = CLIENT.get(&url).query(&params).send().await?;
+        let resp = CLIENT.get(&url)
+            .query(&req)
+            .send()
+            .await?;
 
         let p: Wrapper = resp.json().await?;
 
