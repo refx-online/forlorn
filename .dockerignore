@@ -1,0 +1,10 @@
+target/
+**/target/
+
+**/*.rs.bk
+
+.env
+
+Dockerfile
+.dockerignore
+docker-compose.yml
