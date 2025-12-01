@@ -34,6 +34,11 @@ pub async fn ensure_local_osu_file(config: &OmajinaiConfig, beatmap: &Beatmap) -
     let osu_file_bytes = if osu_file_path.exists() {
         fs::read(&osu_file_path)?
     } else {
+        tracing::info!(
+            "fetching <{} ({})> from beatmap service.",
+            beatmap.full_name(),
+            beatmap.id
+        );
         let bytes = fetch_beatmap(config, beatmap.id).await?;
         fs::write(&osu_file_path, &bytes)?;
 
