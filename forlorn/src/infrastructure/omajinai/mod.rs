@@ -53,10 +53,7 @@ pub async fn calculate_pp(
         let mut req = req.clone();
         req.mode %= 4;
 
-        let resp = CLIENT.get(&url)
-            .query(&req)
-            .send()
-            .await?;
+        let resp = CLIENT.get(&url).query(&req).send().await?;
 
         let p: Wrapper = resp.json().await?;
 
