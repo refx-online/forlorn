@@ -16,6 +16,8 @@ use crate::{
     utils::{fmt_f, fmt_n},
 };
 
+const DISCORD_SCORE_EMBED_COLOR: u32 = 0x2B2D31;
+
 pub fn decrypt_score_data(
     score_data_b64: &[u8],
     client_hash_b64: &[u8],
@@ -247,7 +249,7 @@ pub fn first_place_webhook(
         .title(format!("{} - {:.2}★", beatmap.full_name(), score.stars))
         .url(beatmap.url())
         .description(desc)
-        .color(2829617) // gray
+        .color(DISCORD_SCORE_EMBED_COLOR) // gray
         .author(Author::new().name(format!("set a new #1 worth {:.2}pp", score.pp)))
         .thumbnail(Thumbnail::new().url(format!(
             "https://assets.ppy.sh/beatmaps/{}/covers/card.jpg",
