@@ -3,7 +3,10 @@ use std::sync::LazyLock;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::config::OmajinaiConfig;
+use crate::{
+    config::OmajinaiConfig,
+    constants::{GameMode, Mods},
+};
 
 pub mod beatmap;
 
@@ -51,6 +54,20 @@ pub async fn calculate_pp(
 
     for req in perf_requests {
         let mut req = req.clone();
+        let mut mods = Mods::from_bits_truncate(req.mods as u32);
+
+        if (req.mode == GameMode::CHEAT_OSU.as_i32()
+            || req.mode == GameMode::CHEAT_CHEAT_OSU.as_i32())
+            && mods.contains(Mods::RELAX)
+        {
+            // NOTE: on the client, it has 2 relaxes. relax mod and relax "cheat".
+            //       we should not calculate relax mods on that client because its nerf was deemed "too harsh"
+            //       and because its a cheating stuff, and we know how the people that plays it reeaallly wants
+            mods.remove(Mods::RELAX);
+
+            req.mods = mods.bits() as i32;
+        }
+
         req.mode %= 4;
 
         let resp = CLIENT.get(&url).query(&req).send().await?;

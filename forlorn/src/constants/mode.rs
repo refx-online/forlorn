@@ -62,6 +62,10 @@ impl GameMode {
         self as u8 % 4
     }
 
+    pub fn as_i32(self) -> i32 {
+        self as i32
+    }
+
     pub fn ngeki_nkatu(self) -> bool {
         matches!(
             self,
