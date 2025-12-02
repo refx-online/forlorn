@@ -82,7 +82,7 @@ pub async fn insert(db: &DbPoolManager, score: &Score, beatmap: &Beatmap) -> Res
         .bind(&beatmap.md5)
         .bind(beatmap.status)
         .bind(score.score)
-        .bind(score.xp_gained)
+        .bind(score.xp)
         .bind(score.pp)
         .bind(score.acc)
         .bind(score.max_combo)

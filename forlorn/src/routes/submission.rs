@@ -20,8 +20,8 @@ use crate::{
         password::verify_password,
         score::{
             bind_cheat_values, calculate_accuracy, calculate_placement,
-            calculate_score_performance, calculate_status, decrypt_score_data, first_place_webhook,
-            update_any_preexisting_personal_best, validate_cheat_values,
+            calculate_score_performance, calculate_status, calculate_xp, decrypt_score_data,
+            first_place_webhook, update_any_preexisting_personal_best, validate_cheat_values,
         },
         stats::{get_computed_playtime, recalculate},
     },
@@ -262,7 +262,7 @@ pub async fn submit_score(
     score.acc = calculate_accuracy(&score);
 
     if let Ok(true) = ensure_local_osu_file(&state.config.omajinai, &beatmap).await {
-        (score.pp, score.stars) =
+        (score.pp, score.stars, score.hypothetical_pp) =
             calculate_score_performance(&state.config.omajinai, &score, beatmap.id).await;
 
         if score.passed {
@@ -280,6 +280,8 @@ pub async fn submit_score(
     }
 
     score.time_elapsed = if score.passed { submission.score_time } else { submission.fail_time };
+
+    score.xp = calculate_xp(&score, &beatmap);
 
     if score.status == SubmissionStatus::Best.as_i32() {
         if beatmap.has_leaderboard() && score.rank == 1 && !user.restricted() {
@@ -340,17 +342,11 @@ pub async fn submit_score(
     stats.plays += 1;
     stats.tscore += score.score as u64;
     stats.total_hits += score.n300 as u32 + score.n100 as u32 + score.n50 as u32;
+    stats.xp += score.xp.round() as i32;
 
     if score.mode().ngeki_nkatu() {
         stats.total_hits += score.ngeki as u32 + score.nkatu as u32;
     }
-
-    let mut stats_updates = HashMap::new();
-
-    stats_updates.insert("plays", stats.plays);
-    stats_updates.insert("playtime", stats.playtime);
-    stats_updates.insert("tscore", stats.tscore as u32);
-    stats_updates.insert("total_hits", stats.total_hits);
 
     if score.passed && beatmap.has_leaderboard() {
         if score.max_combo as u32 > stats.max_combo {

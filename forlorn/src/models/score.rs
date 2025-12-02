@@ -9,7 +9,8 @@ pub struct Score {
     pub id: u64,
     pub map_md5: String,
     pub score: i32,
-    pub xp_gained: i32, //unused
+    #[sqlx(rename = "xp_gained")]
+    pub xp: f32,
     pub pp: f32,
     pub acc: f32,
     pub max_combo: i32,
@@ -57,6 +58,8 @@ pub struct Score {
     #[sqlx(skip)]
     pub rank: u32,
     #[sqlx(skip)]
+    pub hypothetical_pp: f32,
+    #[sqlx(skip)]
     pub stars: f32,
     #[sqlx(skip)]
     pub passed: bool,
@@ -94,15 +97,15 @@ impl Score {
             // will set later
             id: 0,
             map_md5: String::new(),
-            xp_gained: 0,
+            xp: 0.0,
             pp: 0.0,
             acc: 0.0,
             status: 0,
             time_elapsed: 0,
             userid: 0,
-            aim_correction_value: -1,
-            ar_changer_value: -1.0,
-            timewarp_value: -1.0,
+            aim_correction_value: 0,
+            ar_changer_value: 0.0,
+            timewarp_value: 0.0,
             uses_aim_correction: false,
             uses_ar_changer: false,
             uses_cs_changer: false,
@@ -110,6 +113,7 @@ impl Score {
             uses_hd_remover: false,
             pinned: false,
             rank: 0,
+            hypothetical_pp: 0.0,
             stars: 0.0,
         })
     }

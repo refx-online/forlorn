@@ -29,11 +29,19 @@ pub struct PerformanceRequest {
 pub struct PerformanceResult {
     pub stars: f32,
     pub pp: f32,
+
+    /// hypothetical, as it removes misses from the score
+    /// and calculate the performance point and it results this.
+    pub hypothetical_pp: f32,
 }
 
 impl Default for PerformanceResult {
     fn default() -> Self {
-        Self { stars: 0.0, pp: 0.0 }
+        Self {
+            stars: 0.0,
+            pp: 0.0,
+            hypothetical_pp: 0.0,
+        }
     }
 }
 

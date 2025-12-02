@@ -5,7 +5,7 @@ use webhook::{Author, Embed, Footer, Thumbnail, Webhook};
 
 use crate::{
     config::OmajinaiConfig,
-    constants::{GameMode, SubmissionStatus},
+    constants::{GameMode, Grade, SubmissionStatus},
     dto::submission::ScoreSubmission,
     infrastructure::{
         database::DbPoolManager,
@@ -150,7 +150,7 @@ pub async fn calculate_score_performance(
     config: &OmajinaiConfig,
     score: &Score,
     beatmap_id: i32,
-) -> (f32, f32) {
+) -> (f32, f32, f32) {
     let request = PerformanceRequest {
         beatmap_id,
         mode: score.mode,
@@ -165,10 +165,121 @@ pub async fn calculate_score_performance(
         Ok(mut results) => {
             let result = results.pop().unwrap_or_default();
 
-            (result.pp, result.stars)
+            (result.pp, result.stars, result.hypothetical_pp)
         },
-        Err(_) => (0.0, 0.0), // TODO: raise for error instead setting to 0? but it will broke submission..
+        Err(_) => (0.0, 0.0, 0.0), // TODO: raise for error instead setting to 0? but it will broke submission..
     }
+}
+
+/// This xp calculation that was supposed to
+/// replace "Performance Point" for the cheat/cheatcheat mode.
+/// It was implemented by kaupec1 when the server was a cheat only (early days),
+/// and I have to say this calculation is very weird.
+///
+/// But oh well, I deprecated it. this is here since I just remember
+/// that this calculation exists back then. and then I ported it today on
+/// Rust since the codebase starts to look better now. and for legacy purposes.
+/// and most importantly, I have free time and it needs to be wasted.
+///
+/// Also I edited some value to match up the current state
+/// since this server has like billion leaderboard now.
+pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
+    let (
+        score_weight,
+        pp_weight,
+        combo_weight,
+        time_weight,
+        acc_weight,
+        ar_weight,
+        aim_weight,
+        timewarp_weight,
+        cs_weight,
+        hd_weight,
+        perfect_weight,
+    ) = (
+        75.0, 50.0, 25.0, 60.0, 50.0, 25.0, 25.0, 20.0, 20.0, 10.0, 50.0,
+    );
+
+    let grade_weight = match score.grade() {
+        Grade::XH => 170.0,
+        Grade::SH => 150.0,
+        Grade::X => 120.0,
+        Grade::S => 100.0,
+        Grade::A => 60.0,
+        Grade::B => 40.0,
+        Grade::C => 20.0,
+        Grade::D => 10.0,
+        _ => 0.0,
+    };
+
+    let status_weight = match score.status() {
+        SubmissionStatus::Best => 50.0,
+        SubmissionStatus::Submitted => 20.0,
+        SubmissionStatus::Failed => 0.0,
+    };
+
+    let mut xp = 0.0;
+
+    let score_normalized = (score.score / i32::MAX).min(1) as f32;
+    xp += score_weight * (1.0 - (-22.5 * score_normalized).exp());
+
+    let pp_normalized = (score.pp / score.hypothetical_pp).min(1.0);
+    xp += pp_normalized * pp_weight;
+
+    let max_combo_normalized = (score.max_combo / beatmap.max_combo).min(1) as f32;
+    xp += max_combo_normalized * combo_weight;
+
+    let time_elapsed_normalized = ((beatmap.total_length as f32).ln_1p() / 10.0).min(1.0);
+    xp += time_elapsed_normalized * time_weight;
+
+    let acc_normalized = 1.0 / (1.0 + (-(score.acc / 100.0 - 0.5)).exp());
+    let acc_exponential = 0.5 * acc_normalized.powf(2.0) + 1.0 * acc_normalized + 20.0;
+    let acc_penalty = if score.acc < 85.0 { -(2.0 * (85.0 - score.acc) / 75.0).exp() } else { 0.0 };
+    xp += (acc_exponential + acc_penalty) * acc_weight;
+
+    if score.mode() == GameMode::CHEAT_OSU || score.mode() == GameMode::CHEAT_CHEAT_OSU {
+        if score.ar_changer_value > -1.0 {
+            let ar_changer_value_normalized = if score.ar_changer_value < 0.0 {
+                0.0
+            } else if score.ar_changer_value < 6.0 || score.ar_changer_value > 10.0 {
+                1.0 - ((score.ar_changer_value - 6.0) / 6.0).abs()
+            } else {
+                1.0 - ((score.ar_changer_value - 6.1) / (9.9 - 6.1))
+            };
+            xp += ar_changer_value_normalized * ar_weight;
+        }
+
+        if score.aim_correction_value > -1 {
+            let aim_correction_limit = if score.mode() == GameMode::CHEAT_OSU { 60 } else { 80 };
+            let aim_correction_value_normalized =
+                (score.aim_correction_value / aim_correction_limit).min(1) as f32;
+            xp += aim_correction_value_normalized * aim_weight;
+        }
+
+        if score.timewarp_value > 0.0 {
+            let timewarp_value_contribution = (score.timewarp_value - 150.0) / 100.0;
+            let timewarp_value_normalized = timewarp_value_contribution.clamp(-1.0, 1.0);
+            xp += timewarp_value_normalized * timewarp_weight;
+        };
+
+        if score.uses_cs_changer {
+            xp -= cs_weight;
+        }
+
+        if score.uses_hd_remover {
+            xp -= hd_weight;
+        }
+    }
+
+    if score.perfect {
+        xp += perfect_weight;
+    }
+
+    xp += grade_weight;
+
+    xp += status_weight;
+
+    xp.max(0.0)
 }
 
 pub fn bind_cheat_values(score: &mut Score, fields: &ScoreSubmission) {
@@ -219,10 +330,11 @@ pub fn first_place_webhook(
     prev_holder: Option<(i32, String)>,
 ) -> Webhook {
     let desc = format!(
-        "{} ▸ {}pp ▸ {}\n{:.2}% ▸ [{}/{}/{}/{}x] ▸ {}/{}x ▸ {}",
+        "{} ▸ {}pp ({}pp) ▸ {}\n{:.2}% ▸ [{}/{}/{}/{}x] ▸ {}/{}x ▸ {}",
         score.grade().discord_emoji(),
-        fmt_f(score.pp),    // formatted to match python
-        fmt_n(score.score), // formatted to match python
+        fmt_f(score.pp),              // formatted to match python
+        fmt_f(score.hypothetical_pp), // formatted to match python
+        fmt_n(score.score),           // formatted to match python
         score.acc,
         score.n300,
         score.n100,
