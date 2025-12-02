@@ -9,7 +9,7 @@ pub struct Score {
     pub id: u64,
     pub map_md5: String,
     pub score: i32,
-    pub xp_gained: i32,
+    pub xp_gained: i32, //unused
     pub pp: f32,
     pub acc: f32,
     pub max_combo: i32,
@@ -155,11 +155,11 @@ impl Score {
     */
 
     pub fn mode(&self) -> GameMode {
-        GameMode::from_params(self.mode as u8, self.mods())
+        GameMode::from_params(self.mode, self.mods())
     }
 
     pub fn mods(&self) -> Mods {
-        Mods::from_bits_truncate(self.mods as u32)
+        Mods::from_bits_truncate(self.mods)
     }
 
     pub fn grade(&self) -> Grade {

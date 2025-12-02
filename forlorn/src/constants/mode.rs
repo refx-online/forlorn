@@ -21,7 +21,7 @@ pub enum GameMode {
 }
 
 impl GameMode {
-    pub fn from_params(mode: u8, mods: Mods) -> GameMode {
+    pub fn from_params(mode: i32, mods: Mods) -> GameMode {
         // i dont even know
         if mode >= 4 {
             return match mode {
@@ -58,8 +58,8 @@ impl GameMode {
         }
     }
 
-    pub fn as_vanilla(self) -> u8 {
-        self as u8 % 4
+    pub fn as_vanilla(self) -> i32 {
+        self as i32 % 4
     }
 
     pub fn as_i32(self) -> i32 {

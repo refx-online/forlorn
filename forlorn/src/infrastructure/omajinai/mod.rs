@@ -54,7 +54,7 @@ pub async fn calculate_pp(
 
     for req in perf_requests {
         let mut req = req.clone();
-        let mut mods = Mods::from_bits_truncate(req.mods as u32);
+        let mut mods = Mods::from_bits_truncate(req.mods);
 
         if (req.mode == GameMode::CHEAT_OSU.as_i32()
             || req.mode == GameMode::CHEAT_CHEAT_OSU.as_i32())
@@ -65,7 +65,7 @@ pub async fn calculate_pp(
             //       and because its a cheating stuff, and we know how the people that plays it reeaallly wants
             mods.remove(Mods::RELAX);
 
-            req.mods = mods.bits() as i32;
+            req.mods = mods.bits();
         }
 
         req.mode %= 4;

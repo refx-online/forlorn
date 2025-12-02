@@ -2,7 +2,7 @@ use bitflags::bitflags;
 
 bitflags! {
     #[derive(Default, Copy, Clone, PartialEq, Eq, Hash)]
-    pub struct Mods: u32 {
+    pub struct Mods: i32 {
         const NOMOD        = 0;
         const NOFAIL       = 1 << 0;
         const EASY         = 1 << 1;

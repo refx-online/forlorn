@@ -21,7 +21,7 @@ pub struct Stats {
     pub sh_count: u32,
     pub s_count: u32,
     pub a_count: u32,
-    pub xp: i32,
+    pub xp: i32, // unused
 
     #[sqlx(skip)]
     pub rank: i32,
