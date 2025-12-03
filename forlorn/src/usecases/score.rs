@@ -183,6 +183,7 @@ pub async fn calculate_score_performance(
 ///
 /// Also I edited some value to match up the current state
 /// since this server has like billion leaderboard now.
+#[rustfmt::skip]
 pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
     let (
         score_weight,
@@ -220,21 +221,37 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
 
     let mut xp = 0.0;
 
-    let score_normalized = (score.score / i32::MAX).min(1) as f32;
-    xp += score_weight * (1.0 - (-22.5 * score_normalized).exp());
+    let score_normalized =
+        (score.score / i32::MAX).min(1) as f32;
 
-    let pp_normalized = (score.pp / score.hypothetical_pp).min(1.0);
+    xp += score_weight 
+        * (1.0 - (-22.5 * score_normalized).exp());
+
+    let pp_normalized =
+        (score.pp / score.hypothetical_pp).min(1.0);
+
     xp += pp_normalized * pp_weight;
 
-    let max_combo_normalized = (score.max_combo / beatmap.max_combo).min(1) as f32;
+    let max_combo_normalized =
+        (score.max_combo / beatmap.max_combo).min(1) as f32;
+
     xp += max_combo_normalized * combo_weight;
 
-    let time_elapsed_normalized = ((beatmap.total_length as f32).ln_1p() / 10.0).min(1.0);
+    let time_elapsed_normalized =
+        ((beatmap.total_length as f32).ln_1p() / 10.0).min(1.0);
+
     xp += time_elapsed_normalized * time_weight;
 
-    let acc_normalized = 1.0 / (1.0 + (-(score.acc / 100.0 - 0.5)).exp());
-    let acc_exponential = 0.5 * acc_normalized.powf(2.0) + 1.0 * acc_normalized + 20.0;
-    let acc_penalty = if score.acc < 85.0 { -(2.0 * (85.0 - score.acc) / 75.0).exp() } else { 0.0 };
+    let acc_normalized = 1.0
+        / (1.0 + (-(score.acc / 100.0 - 0.5)).exp());
+    let acc_exponential = 0.5
+        * acc_normalized.powf(2.0) + 1.0 * acc_normalized + 20.0;
+    let acc_penalty = if score.acc < 85.0 {
+        -(2.0 * (85.0 - score.acc) / 75.0).exp()
+    } else {
+        0.0
+    };
+
     xp += (acc_exponential + acc_penalty) * acc_weight;
 
     if score.mode() == GameMode::CHEAT_OSU || score.mode() == GameMode::CHEAT_CHEAT_OSU {
@@ -246,19 +263,26 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
             } else {
                 1.0 - ((score.ar_changer_value - 6.1) / (9.9 - 6.1))
             };
+
             xp += ar_changer_value_normalized * ar_weight;
         }
 
         if score.aim_correction_value > -1 {
-            let aim_correction_limit = if score.mode() == GameMode::CHEAT_OSU { 60 } else { 80 };
+            let aim_correction_limit = if score.mode() == GameMode::CHEAT_OSU {
+                60
+            } else {
+                80
+            };
             let aim_correction_value_normalized =
                 (score.aim_correction_value / aim_correction_limit).min(1) as f32;
+
             xp += aim_correction_value_normalized * aim_weight;
         }
 
         if score.timewarp_value > 0.0 {
             let timewarp_value_contribution = (score.timewarp_value - 150.0) / 100.0;
             let timewarp_value_normalized = timewarp_value_contribution.clamp(-1.0, 1.0);
+
             xp += timewarp_value_normalized * timewarp_weight;
         };
 
