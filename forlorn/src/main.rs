@@ -14,7 +14,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use config::Config;
 use dotenvy::dotenv;
-use infrastructure::{database, redis};
+use infrastructure::{database, redis, tasks};
 use routes::create_routes;
 use state::AppState;
 use tokio::net::TcpListener;
@@ -32,6 +32,7 @@ async fn main() -> Result<()> {
 
     let state = AppState::new(config.clone(), db_pool, redis_conn);
 
+    tokio::spawn(tasks::cleanup_score_locks(state.score_locks.clone()));
     let app = create_routes().with_state(state);
 
     let addr = format!("0.0.0.0:{}", config.port);

@@ -28,6 +28,16 @@ pub async fn fetch_best(
     Ok(score)
 }
 
+pub async fn fetch_by_online_checksum(
+    db: &DbPoolManager,
+    checksum: &str,
+) -> Result<Option<Score>, sqlx::Error> {
+    sqlx::query_as::<_, Score>("select * from scores where online_checksum = ?")
+        .bind(checksum)
+        .fetch_optional(db.as_ref())
+        .await
+}
+
 pub async fn update_status(db: &DbPoolManager, score_id: u64, status: i32) -> Result<()> {
     sqlx::query("update scores set status = ? where id = ?")
         .bind(status)

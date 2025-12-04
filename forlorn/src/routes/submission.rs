@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use axum::{
     body::Bytes,
@@ -6,6 +6,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
+use tokio::sync::Mutex;
 use webhook::Webhook;
 
 use crate::{
@@ -209,6 +210,26 @@ pub async fn submit_score(
         Some(score) => score,
         None => return (StatusCode::BAD_REQUEST, "error: score").into_response(),
     };
+
+    let lock = state
+        .score_locks
+        .entry(score.online_checksum.clone())
+        .or_insert_with(|| Arc::new(Mutex::new(())))
+        .clone();
+
+    // NOTE: to ensure no duplicates.
+    let _mutex_guard = lock.lock().await;
+
+    if let Ok(Some(_)) =
+        repository::score::fetch_by_online_checksum(&state.db, &score.online_checksum).await
+    {
+        tracing::warn!(
+            "duplicate score submission detected for user: {}",
+            user.name
+        );
+
+        return (StatusCode::OK, "error: duplicate").into_response();
+    }
 
     score.mode = score.mode() as i32;
 
@@ -416,6 +437,9 @@ pub async fn submit_score(
         score.pp.round(),
         stats.pp,
     );
+
+    drop(_mutex_guard);
+    state.score_locks.remove(&score.online_checksum);
 
     let charts = build_submission_charts(&score, &beatmap, &stats, &prev_stats, &state).await;
 
