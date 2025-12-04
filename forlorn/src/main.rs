@@ -14,7 +14,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use config::Config;
 use dotenvy::dotenv;
-use infrastructure::{database, redis, tasks};
+use infrastructure::{database, redis, redis::subscriber::SubscriberHandler, tasks};
 use routes::create_routes;
 use state::AppState;
 use tokio::net::TcpListener;
@@ -28,11 +28,18 @@ async fn main() -> Result<()> {
     let config = Arc::new(config);
 
     let db_pool = database::create_pool(&config.database).await?;
-    let redis_conn = redis::create_connection(&config.redis).await?;
+    let (redis_conn, subscriber_conn) = redis::create_connection(&config.redis).await?;
 
-    let state = AppState::new(config.clone(), db_pool, redis_conn);
+    let state = AppState::new(config.clone(), db_pool, redis_conn, subscriber_conn);
+    let subscriber = SubscriberHandler::new(state.clone());
 
     tokio::spawn(tasks::cleanup_score_locks(state.score_locks.clone()));
+    tokio::spawn(async move {
+        if let Err(e) = subscriber.start_listener().await {
+            tracing::error!("pubsub listener crashed: {e:?}");
+        }
+    });
+
     let app = create_routes().with_state(state);
 
     let addr = format!("0.0.0.0:{}", config.port);

@@ -1,8 +1,8 @@
 use crate::{
-    models::{Beatmap, Score, Stats},
+    models::{Beatmap, LeaderboardScore, PersonalBest, Score, Stats, User},
     repository,
     state::AppState,
-    usecases::achievement::check_and_unlock_achievements,
+    usecases::{achievement::check_and_unlock_achievements, leaderboard::format_score_line},
 };
 
 // todo: trait
@@ -109,4 +109,60 @@ pub async fn build_submission_charts(
     charts.push(format!("achievements-new:{achievements_str}"));
 
     charts.join("|")
+}
+
+pub fn build_leaderboard_response(
+    beatmap: &Beatmap,
+    scores: &[LeaderboardScore],
+    personal_best: Option<PersonalBest>,
+    avg_rating: f32,
+    is_refx: bool,
+) -> String {
+    let mut lines = vec![
+        format!(
+            "{}|false|{}|{}|{}|0|",
+            beatmap.status,
+            beatmap.id,
+            beatmap.set_id,
+            scores.len()
+        ),
+        format!("0\n{}\n{:.1}", beatmap.full_name(), avg_rating),
+    ];
+
+    if let Some(pb) = personal_best {
+        lines.push(format_score_line(&pb.score, pb.rank, is_refx));
+    } else {
+        lines.push(String::new());
+    }
+
+    for (idx, score) in scores.iter().enumerate() {
+        lines.push(format_score_line(score, (idx + 1) as i32, is_refx));
+    }
+
+    lines.join("\n")
+}
+
+pub async fn build_empty_leaderboard(beatmap: &Beatmap, state: &AppState) -> String {
+    let avg_rating = repository::beatmap::fetch_average_rating(&state.db, &beatmap.md5)
+        .await
+        .unwrap_or(0.0);
+
+    let resp = format!(
+        "{}|false|{}|{}|0|0|\n0\n{}\n{:.1}\n\n",
+        beatmap.status,
+        beatmap.id,
+        beatmap.set_id,
+        beatmap.full_name(),
+        avg_rating
+    );
+
+    resp
+}
+
+pub async fn build_display_name(user: &User, state: &AppState) -> String {
+    if let Ok(Some(clan)) = repository::clan::fetch_by_id(&state.db, user.clan_id).await {
+        return format!("[{}] {}", clan.tag, user.name);
+    }
+
+    user.name.clone()
 }

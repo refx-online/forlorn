@@ -23,9 +23,13 @@ pub struct User {
     pub userpage_content: Option<String>,
     pub api_key: Option<String>,
     pub whitelist: i32,
+    pub preferred_metric: String,
 }
 
 impl User {
+    pub fn preferred_metric(&self) -> &str {
+        &self.preferred_metric
+    }
     pub fn restricted(&self) -> bool {
         !Privileges::from_bits_retain(self.privilege as u32).contains(Privileges::UNRESTRICTED)
     }

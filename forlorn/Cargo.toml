@@ -13,6 +13,7 @@ chrono = { version = "0.4", features = ["default", "serde"] }
 dotenvy = "0.15"
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "chrono", "rust_decimal", "mysql"] }
 tokio = { version = "1.45.1", features = ["net", "rt-multi-thread", "macros"] }
+tokio-stream = "0.1.17"
 redis = { version = "0.32.5", features = ["aio", "tokio-comp"] }
 
 base64 = "0.22.1"

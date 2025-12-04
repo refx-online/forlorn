@@ -1,4 +1,5 @@
 pub mod health;
+pub mod leaderboard;
 pub mod submission;
 
 use axum::{
@@ -19,4 +20,6 @@ pub fn create_routes() -> Router<AppState> {
             "/web/refx-submit-modular.php",
             post(submission::submit_score),
         ) // todo: refactor client route
+        .route("/web/osu-osz2-getscores.php", get(leaderboard::get_scores))
+        .route("/web/refx-osz2-getscores.php", get(leaderboard::get_scores))
 }

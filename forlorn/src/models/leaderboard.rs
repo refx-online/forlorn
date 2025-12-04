@@ -1,0 +1,42 @@
+use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+
+#[derive(Serialize, Deserialize, FromRow)]
+pub struct LeaderboardScore {
+    pub id: u64,
+    pub preferred_metric: f32,
+    pub max_combo: i32,
+    pub n50: i32,
+    pub n100: i32,
+    pub n300: i32,
+    pub nmiss: i32,
+    pub nkatu: i32,
+    pub ngeki: i32,
+    pub perfect: bool,
+    pub mods: i32,
+    pub play_time: i64,
+    pub userid: i32,
+    pub name: String,
+
+    #[sqlx(rename = "aim_value")]
+    pub aim_correction_value: i32,
+    #[sqlx(rename = "ar_value")]
+    pub ar_changer_value: f32,
+    #[sqlx(rename = "aim")]
+    pub uses_aim_correction: bool,
+    #[sqlx(rename = "arc")]
+    pub uses_ar_changer: bool,
+    #[sqlx(rename = "cs")]
+    pub uses_cs_changer: bool,
+    #[sqlx(rename = "tw")]
+    pub uses_timewarp: bool,
+    #[sqlx(rename = "twval")]
+    pub timewarp_value: f32,
+    #[sqlx(rename = "hdr")]
+    pub uses_hd_remover: bool,
+}
+
+pub struct PersonalBest {
+    pub score: LeaderboardScore,
+    pub rank: i32,
+}
