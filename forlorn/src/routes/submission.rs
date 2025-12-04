@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 
 use axum::{
     body::Bytes,
@@ -173,6 +173,8 @@ pub async fn submit_score(
         // todo: restrict?
         return (StatusCode::BAD_REQUEST, "error: user-agent").into_response();
     }
+
+    let now = Instant::now();
 
     let submission = match parse_typed_multipart(&mut multipart).await {
         Ok(d) => d,
@@ -415,7 +417,7 @@ pub async fn submit_score(
             )
             .await
             {
-                stats.rank = new_rank as i32;
+                stats.rank = new_rank;
             }
         }
     }
@@ -429,13 +431,16 @@ pub async fn submit_score(
         let _ = increment_playcount(&state.db, &mut beatmap, score.passed).await;
     }
 
+    let done = now.elapsed();
+
     tracing::info!(
-        "[{}] {} submitted a score! ({}, {}pp | {}pp)",
+        "[{}] {} submitted a score! ({}, {}pp | {}pp) in {}ms.",
         score.mode().as_str(),
         user.name,
         score.status().as_str(),
         score.pp.round(),
         stats.pp,
+        done.as_millis(),
     );
 
     drop(_mutex_guard);

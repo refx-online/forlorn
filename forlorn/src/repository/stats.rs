@@ -62,15 +62,15 @@ pub async fn fetch_bonus_count(db: &DbPoolManager, stats: &Stats) -> Result<i64>
     Ok(count)
 }
 
-pub async fn get_global_rank(redis: &RedisConnectionManager, stats: &Stats) -> Result<usize> {
+pub async fn get_global_rank(redis: &RedisConnectionManager, stats: &Stats) -> Result<i32> {
     let leaderboard = format!("bancho:leaderboard:{}", stats.mode);
     let mut conn = redis.lock().await;
 
-    let rank: Option<u64> = conn
-        .zrevrank::<_, _, Option<u64>>(&leaderboard, &stats.id.to_string())
+    let rank: Option<i32> = conn
+        .zrevrank::<_, _, Option<i32>>(&leaderboard, &stats.id.to_string())
         .await?;
 
-    Ok(rank.map(|r| r as usize + 1).unwrap_or(0))
+    Ok(rank.map(|r| r + 1).unwrap_or(0))
 }
 
 pub async fn update_rank(
@@ -78,7 +78,7 @@ pub async fn update_rank(
     stats: &Stats,
     country: &str,
     is_restricted: bool,
-) -> Result<usize> {
+) -> Result<i32> {
     if !is_restricted {
         let mut conn = redis.lock().await;
 

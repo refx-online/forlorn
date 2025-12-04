@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -71,6 +73,8 @@ pub async fn get_scores(
 
         // restrict? but no one uses aqn tho..
     }
+
+    let now = Instant::now();
 
     if state.unsubmitted_maps.contains(&leaderboard.map_md5) {
         return (StatusCode::OK, "-1|false").into_response();
@@ -183,7 +187,9 @@ pub async fn get_scores(
         leaderboard.is_refx(),
     );
 
-    tracing::info!("[{}] Leaderboard served to {}", mode.as_str(), user.name);
+    let done = now.elapsed();
+
+    tracing::info!("[{}] Leaderboard served to {} in {}ms.", mode.as_str(), user.name, done.as_millis());
 
     (StatusCode::OK, leaderboard_response.into_bytes()).into_response()
 }
