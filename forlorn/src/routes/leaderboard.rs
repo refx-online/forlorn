@@ -183,5 +183,7 @@ pub async fn get_scores(
         leaderboard.is_refx(),
     );
 
+    tracing::info!("[{}] Leaderboard served to {}", mode.as_str(), user.name);
+
     (StatusCode::OK, leaderboard_response.into_bytes()).into_response()
 }
