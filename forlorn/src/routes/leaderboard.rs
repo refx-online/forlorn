@@ -189,7 +189,12 @@ pub async fn get_scores(
 
     let done = now.elapsed();
 
-    tracing::info!("[{}] Leaderboard served to {} in {}ms.", mode.as_str(), user.name, done.as_millis());
+    tracing::info!(
+        "[{}] Leaderboard served to {} in {}ms.",
+        mode.as_str(),
+        user.name,
+        done.as_millis()
+    );
 
     (StatusCode::OK, leaderboard_response.into_bytes()).into_response()
 }
