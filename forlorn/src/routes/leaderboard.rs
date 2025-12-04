@@ -79,10 +79,11 @@ pub async fn get_scores(
         return (StatusCode::OK, "1|false").into_response();
     }
 
-    let user = match authenticate_user(&state, &leaderboard.password_md5, &leaderboard.username).await {
-        Ok(user) => user,
-        Err(response) => return response,
-    };
+    let user =
+        match authenticate_user(&state, &leaderboard.password_md5, &leaderboard.username).await {
+            Ok(user) => user,
+            Err(response) => return response,
+        };
 
     let mode = leaderboard.mode();
     //let mods = leaderboard.mods();
