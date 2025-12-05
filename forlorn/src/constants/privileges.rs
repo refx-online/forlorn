@@ -2,7 +2,7 @@ use bitflags::bitflags;
 
 bitflags! {
     #[derive(Default, Copy, Clone, PartialEq, Eq, Hash)]
-    pub struct Privileges: u32 {
+    pub struct Privileges: i32 {
         // NOTE: only defining privileges that are currently used
         // TODO: define other privileges as needed?
         const UNRESTRICTED       = 1 << 0;

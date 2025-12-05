@@ -348,6 +348,28 @@ pub async fn submit_score(
         } else {
             let _ = restrict::restrict(&state.redis, user.id, "score submitter?").await;
         }
+
+        if let (true, Some(threshold)) = score.check_pp_cap(&user) {
+            tracing::warn!(
+                "[{}] <{} ({})> restricted for suspicious pp gain ({}pp > {}pp)",
+                score.mode().as_str(),
+                user.name,
+                user.id,
+                score.pp.round(),
+                threshold,
+            );
+
+            let _ = restrict::restrict(
+                &state.redis,
+                user.id,
+                &format!(
+                    "suspicious pp gain ({}pp > {}pp)",
+                    score.pp.round(),
+                    threshold
+                ),
+            )
+            .await;
+        }
     }
 
     // update player & beatmap stats

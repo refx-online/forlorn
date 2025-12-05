@@ -93,4 +93,38 @@ impl GameMode {
             GameMode::TOUCH_DEVICE_OSU => "td!std",
         }
     }
+
+    /// The PP cap thresholds for each game mode,
+    /// used for whitelist stage 0–5.
+    ///
+    /// TODO: move this somewhere else
+    ///
+    /// NOTE: * = estimation
+    ///
+    ///                0     1     2     3     4*    5*
+    /// - vn!std:    900 , 1000, 1300, 1500, 1700, 2300
+    /// - vn!taiko:  1000, 1800, 2000, 2400, 2800, 3100
+    /// - vn!catch:  1100, 1800, 2000, 2400, 2800, 3100
+    /// - vn!mania:  1600, 1800, 2000, 2400, 2800, 3100
+    /// - rx!std:    1600, 1800, 2000, 2400, 2800, 4700
+    /// - rx!taiko:  1000, 1800, 2000, 2400, 2800, 4200
+    /// - rx!catch:  1000, 1800, 2000, 2400, 2800, 4200
+    /// - ap!std:    1200, 1800, 2000, 2400, ∞
+    pub fn pp_cap(&self) -> &'static [i32] {
+        match self {
+            GameMode::VN_OSU => &[900, 1000, 1300, 1500, 1700, 2300],
+            GameMode::VN_TAIKO => &[1000, 1800, 2000, 2400, 2800, 3100],
+            GameMode::VN_CATCH => &[1100, 1800, 2000, 2400, 2800, 3100],
+            GameMode::VN_MANIA => &[1600, 1800, 2000, 2400, 2800, 3100],
+
+            GameMode::RX_OSU => &[1600, 1800, 2000, 2400, 2800, 4700],
+            GameMode::RX_TAIKO => &[1000, 1800, 2000, 2400, 2800, 4200],
+            GameMode::RX_CATCH => &[1000, 1800, 2000, 2400, 2800, 4200],
+
+            GameMode::AP_OSU => &[1200, 1800, 2000, 2400, i32::MAX], // ∞
+
+            // well, we doesn't have to check for cheats and touch device
+            _ => &[],
+        }
+    }
 }

@@ -2,6 +2,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+use super::user::User;
 use crate::constants::{GameMode, Grade, Mods, SubmissionStatus};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -197,5 +198,22 @@ impl Score {
             "katu" => self.nkatu as f64,
             _ => 0.0,
         }
+    }
+
+    pub fn check_pp_cap(&self, user: &User) -> (bool, Option<i32>) {
+        // does not have to restrict again if the user is already restricted.
+        if user.restricted() {
+            return (false, None);
+        }
+
+        let pp_caps = self.mode().pp_cap();
+
+        if pp_caps.is_empty() {
+            return (false, None);
+        }
+
+        let threshold = pp_caps[user.whitelist_stage().min(pp_caps.len() - 1)];
+
+        (self.pp > threshold as f32, Some(threshold))
     }
 }
