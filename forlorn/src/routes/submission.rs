@@ -333,7 +333,11 @@ pub async fn submit_score(
     };
 
     if score.passed {
-        if score.rank == 1 && beatmap.has_leaderboard() {
+        if score.rank == 1
+            && beatmap.has_leaderboard()
+            && !user.restricted()
+            && score.status == SubmissionStatus::Best.as_i32()
+        {
             let _ = announce::announce(&state.redis, score.id).await;
         }
 
@@ -349,7 +353,9 @@ pub async fn submit_score(
             let _ = restrict::restrict(&state.redis, user.id, "score submitter?").await;
         }
 
-        if let (true, Some(threshold)) = score.check_pp_cap(&user) {
+        if let (true, Some(threshold)) = score.check_pp_cap(&user)
+            && beatmap.awards_ranked_pp()
+        {
             tracing::warn!(
                 "[{}] <{} ({})> restricted for suspicious pp gain ({}pp > {}pp)",
                 score.mode().as_str(),
@@ -362,11 +368,7 @@ pub async fn submit_score(
             let _ = restrict::restrict(
                 &state.redis,
                 user.id,
-                &format!(
-                    "suspicious pp gain ({}pp > {}pp)",
-                    score.pp.round(),
-                    threshold
-                ),
+                &format!("suspicious pp gain ({}pp)", score.pp.round(),),
             )
             .await;
         }

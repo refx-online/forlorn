@@ -58,6 +58,17 @@ impl GameMode {
         }
     }
 
+    pub fn ngeki_nkatu(self) -> bool {
+        matches!(
+            self,
+            GameMode::VN_TAIKO | GameMode::VN_MANIA | GameMode::RX_TAIKO
+        )
+    }
+
+    pub fn cheat(self) -> bool {
+        matches!(self, GameMode::CHEAT_OSU | GameMode::CHEAT_CHEAT_OSU)
+    }
+
     pub fn as_vanilla(self) -> i32 {
         self as i32 % 4
     }
@@ -66,14 +77,6 @@ impl GameMode {
         self as i32
     }
 
-    pub fn ngeki_nkatu(self) -> bool {
-        matches!(
-            self,
-            GameMode::VN_TAIKO | GameMode::VN_MANIA | GameMode::RX_TAIKO
-        )
-    }
-
-    /// TODO: create a macro to handle cases like this
     pub fn as_str(self) -> &'static str {
         match self {
             GameMode::VN_OSU => "vn!std",
@@ -96,6 +99,8 @@ impl GameMode {
 
     /// The PP cap thresholds for each game mode,
     /// used for whitelist stage 0–5.
+    ///
+    /// This logic is a portion of the python codebase.
     ///
     /// TODO: move this somewhere else
     ///

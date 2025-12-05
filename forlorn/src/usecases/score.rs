@@ -254,7 +254,7 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
 
     xp += (acc_exponential + acc_penalty) * acc_weight;
 
-    if score.mode() == GameMode::CHEAT_OSU || score.mode() == GameMode::CHEAT_CHEAT_OSU {
+    if score.mode().cheat() {
         if score.ar_changer_value > -1.0 {
             let ar_changer_value_normalized = if score.ar_changer_value < 0.0 {
                 0.0
