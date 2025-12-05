@@ -24,13 +24,13 @@ pub async fn fetch_by_user_mode(
         None => return Ok(None),
     };
 
-    stats.rank = get_global_rank(redis, &stats).await.unwrap_or(0) as i32;
+    stats.rank = get_global_rank(redis, &stats).await.unwrap_or(0);
 
     Ok(Some(stats))
 }
 
-pub async fn fetch_total_scores(db: &DbPoolManager, stats: &Stats) -> Result<Vec<(f64, f64)>> {
-    let scores = sqlx::query_as::<_, (f64, f64)>(
+pub async fn fetch_total_scores(db: &DbPoolManager, stats: &Stats) -> Result<Vec<(f32, f32)>> {
+    let scores = sqlx::query_as::<_, (f32, f32)>(
         r#"
         select s.acc, s.pp 
         from scores s 
@@ -48,8 +48,8 @@ pub async fn fetch_total_scores(db: &DbPoolManager, stats: &Stats) -> Result<Vec
     Ok(scores)
 }
 
-pub async fn fetch_bonus_count(db: &DbPoolManager, stats: &Stats) -> Result<i64> {
-    let count = sqlx::query_scalar::<_, i64>(
+pub async fn fetch_bonus_count(db: &DbPoolManager, stats: &Stats) -> Result<i32> {
+    let count = sqlx::query_scalar::<_, i32>(
         "select count(*) from scores s \
          right join maps b on s.map_md5 = b.md5 \
          where b.status in (2, 3) and s.status = 2 and s.mode = ? and s.userid = ?",

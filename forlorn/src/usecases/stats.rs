@@ -15,8 +15,8 @@ pub async fn recalculate(db: &DbPoolManager, stats: &mut Stats) -> Result<()> {
     let mut last_idx = 0;
 
     for (idx, (acc, pp)) in scores.iter().enumerate() {
-        let pp = *pp as f32;
-        let acc = *acc as f32;
+        let pp = *pp;
+        let acc = *acc;
 
         total_pp += pp * (0.95_f32.powi(idx as i32));
         total_acc += acc * (0.95_f32.powi(idx as i32));
@@ -34,8 +34,8 @@ pub async fn recalculate(db: &DbPoolManager, stats: &mut Stats) -> Result<()> {
 pub async fn calculate_bonus(db: &DbPoolManager, stats: &Stats) -> Result<f32> {
     let result = repository::stats::fetch_bonus_count(db, stats).await?;
 
-    let count = result.min(1000) as f32;
-    let bonus_pp = 416.6667 * (1.0 - (0.995_f32.powi(count as i32)));
+    let count = result.min(1000);
+    let bonus_pp = 416.6667 * (1.0 - (0.995_f32.powi(count)));
 
     Ok(bonus_pp)
 }
