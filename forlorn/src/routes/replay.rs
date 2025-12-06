@@ -42,10 +42,7 @@ pub async fn get_replay(
         Err(response) => return response,
     };
 
-    let file = state
-        .config
-        .replay_path
-        .join(format!("{}.osr", score.id));
+    let file = state.config.replay_path.join(format!("{}.osr", score.id));
 
     if user.id != score.userid {
         // creating task here so incrementing replay views doesnt delay filestream....
