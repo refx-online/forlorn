@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -32,6 +34,8 @@ pub async fn get_replay(
     State(state): State<AppState>,
     Query(replay): Query<GetReplay>,
 ) -> impl IntoResponse {
+    let now = Instant::now();
+
     let score = match repository::score::fetch_by_id(&state.db, replay.score_id).await {
         Ok(Some(s)) => s,
         _ => return StatusCode::NOT_FOUND.into_response(),
@@ -55,6 +59,10 @@ pub async fn get_replay(
             .await;
         });
     }
+
+    let done = now.elapsed();
+
+    tracing::info!("Replay served to {} in {}ms.", user.name, done.as_millis());
 
     match FileStream::from_path(file).await {
         Ok(replay) => replay.into_response(),

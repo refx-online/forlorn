@@ -90,7 +90,7 @@ pub async fn get_scores(
         };
 
     let mode = leaderboard.mode();
-    //let mods = leaderboard.mods();
+
     let leaderboard_type = LeaderboardType::from_i32(leaderboard.leaderboard_type);
 
     let beatmap = match repository::beatmap::fetch_by_md5(&state.db, &leaderboard.map_md5).await {
