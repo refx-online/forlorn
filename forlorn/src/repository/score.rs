@@ -28,6 +28,15 @@ pub async fn fetch_best(
     Ok(score)
 }
 
+pub async fn fetch_by_id(db: &DbPoolManager, score_id: u64) -> Result<Option<Score>> {
+    let score = sqlx::query_as::<_, Score>("select * from scores where id = ?")
+        .bind(score_id)
+        .fetch_optional(db.as_ref())
+        .await?;
+
+    Ok(score)
+}
+
 pub async fn fetch_by_online_checksum(
     db: &DbPoolManager,
     checksum: &str,

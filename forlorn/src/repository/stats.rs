@@ -94,6 +94,16 @@ pub async fn update_rank(
     get_global_rank(redis, stats).await
 }
 
+pub async fn increment_replay_views(db: DbPoolManager, user_id: i32, mode: i32) -> Result<()> {
+    sqlx::query("update stats set replay_views = replay_views + 1 where id = ? and mode = ?")
+        .bind(user_id)
+        .bind(mode)
+        .execute(db.as_ref())
+        .await?;
+
+    Ok(())
+}
+
 pub async fn save(db: &DbPoolManager, stats: &Stats) -> Result<()> {
     sqlx::query(
         "update stats set tscore = ?, rscore = ?, pp = ?, plays = ?, playtime = ?, acc = ?, max_combo = ?, total_hits = ?, replay_views = ?, xh_count = ?, x_count = ?, sh_count = ?, s_count = ?, a_count = ?, xp = ? where id = ? and mode = ?"

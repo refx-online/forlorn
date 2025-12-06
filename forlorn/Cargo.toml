@@ -8,6 +8,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 axum = { version = "0.8.7", features = ["multipart"] }
+axum-extra = { version = "0.12.2", features = ["file-stream"] }
 bitflags = "2.8.0"
 chrono = { version = "0.4", features = ["default", "serde"] }
 dotenvy = "0.15"
