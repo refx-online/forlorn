@@ -58,7 +58,13 @@ pub fn decrypt_score_data(
         String::from_utf8_lossy(&b).to_string()
     };
 
-    Ok((score_data, client_hash_decoded))
+    let osu_path_md5 = client_hash_decoded
+        .split_once(':')
+        .map_or(client_hash_decoded.clone(), |(full_path, _)| {
+            full_path.to_string()
+        });
+
+    Ok((score_data, osu_path_md5))
 }
 
 pub fn calculate_accuracy(score: &Score) -> f32 {

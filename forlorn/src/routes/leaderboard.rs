@@ -40,7 +40,7 @@ async fn handle_missing_beatmap(state: &AppState, leaderboard: &GetScores) -> Re
     if !has_set_id {
         state.unsubmitted_maps.insert(leaderboard.map_md5.clone());
 
-        return (StatusCode::OK, "-1|false").into_response();
+        return (StatusCode::OK, b"-1|false").into_response();
     }
 
     let map_exists = repository::beatmap::fetch_by_filename(&state.db, &leaderboard.map_filename)
@@ -52,11 +52,11 @@ async fn handle_missing_beatmap(state: &AppState, leaderboard: &GetScores) -> Re
     if map_exists {
         state.needs_update_maps.insert(leaderboard.map_md5.clone());
 
-        (StatusCode::OK, "1|false").into_response()
+        (StatusCode::OK, b"1|false").into_response()
     } else {
         state.unsubmitted_maps.insert(leaderboard.map_md5.clone());
 
-        (StatusCode::OK, "-1|false").into_response()
+        (StatusCode::OK, b"-1|false").into_response()
     }
 }
 
@@ -77,10 +77,10 @@ pub async fn get_scores(
     let now = Instant::now();
 
     if state.unsubmitted_maps.contains(&leaderboard.map_md5) {
-        return (StatusCode::OK, "-1|false").into_response();
+        return (StatusCode::OK, b"-1|false").into_response();
     }
     if state.needs_update_maps.contains(&leaderboard.map_md5) {
-        return (StatusCode::OK, "1|false").into_response();
+        return (StatusCode::OK, b"1|false").into_response();
     }
 
     let user =
@@ -98,11 +98,15 @@ pub async fn get_scores(
         Ok(None) => {
             return handle_missing_beatmap(&state, &leaderboard).await;
         },
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "error: db").into_response(),
+        Err(_) => return (StatusCode::OK, b"error: db").into_response(),
     };
 
     if beatmap.status < RankedStatus::Ranked.as_i32() {
-        return (StatusCode::OK, format!("{}|false", beatmap.status)).into_response();
+        return (
+            StatusCode::OK,
+            format!("{}|false", beatmap.status).into_bytes(),
+        )
+            .into_response();
     }
 
     if leaderboard.requesting_from_editor() {
@@ -139,7 +143,7 @@ pub async fn get_scores(
     .await
     {
         Ok(s) => s,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "error: scores").into_response(),
+        Err(_) => return (StatusCode::OK, b"error: scores").into_response(),
     };
 
     let personal_best = if !scores.is_empty() {

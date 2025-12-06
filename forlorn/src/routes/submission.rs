@@ -29,6 +29,8 @@ use crate::{
     utils::build_submission_charts,
 };
 
+const REFX_CURRENT_CLIENT_HASH: &str = "230cd99998f1a18dbc787612179bae0e";
+
 async fn authenticate_user(
     state: &AppState,
     password_md5: &str,
@@ -76,11 +78,10 @@ async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScoreSubmiss
         fields.insert(name, content);
     }
 
-    let score_data_b64 = score_data_b64
-        .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: score data").into_response())?;
+    let score_data_b64 =
+        score_data_b64.ok_or_else(|| (StatusCode::OK, b"error: no").into_response())?;
 
-    let replay_file = replay_file
-        .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: replay file").into_response())?;
+    let replay_file = replay_file.ok_or_else(|| (StatusCode::OK, b"error: no").into_response())?;
 
     let submission = ScoreSubmission {
         exited_out: fields
@@ -101,7 +102,7 @@ async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScoreSubmiss
             .map(|b| String::from_utf8_lossy(b).to_string()),
         iv_b64: fields
             .get("iv")
-            .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: iv").into_response())?
+            .ok_or_else(|| (StatusCode::OK, b"error: no").into_response())?
             .clone(),
         unique_ids: fields
             .get("c1")
@@ -113,14 +114,14 @@ async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScoreSubmiss
         password_md5: fields
             .get("pass")
             .map(|b| String::from_utf8_lossy(b).to_string())
-            .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: password").into_response())?,
+            .ok_or_else(|| (StatusCode::OK, b"error: pass").into_response())?,
         osu_version: fields
             .get("osuver")
             .map(|b| String::from_utf8_lossy(b).to_string())
-            .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: osu version").into_response())?,
+            .ok_or_else(|| (StatusCode::OK, b"error: no").into_response())?,
         client_hash_b64: fields
             .get("s")
-            .ok_or_else(|| (StatusCode::BAD_REQUEST, "error: client hash").into_response())?
+            .ok_or_else(|| (StatusCode::OK, b"error: no").into_response())?
             .clone(),
         aim_value: fields
             .get("acval")
@@ -171,7 +172,7 @@ pub async fn submit_score(
 
     if user_agent != "osu!" {
         // todo: restrict?
-        return (StatusCode::BAD_REQUEST, "error: user-agent").into_response();
+        return (StatusCode::OK, b"error: oldver").into_response();
     }
 
     let now = Instant::now();
@@ -181,19 +182,19 @@ pub async fn submit_score(
         Err(response) => return response,
     };
 
-    let (score_data, _) = match decrypt_score_data(
+    let (score_data, osu_path_md5) = match decrypt_score_data(
         &submission.score_data_b64,
         &submission.client_hash_b64,
         &submission.iv_b64,
         &submission.osu_version,
     ) {
         Ok((v, c)) => (v, c),
-        Err(_) => return (StatusCode::BAD_REQUEST, "error: decrypt").into_response(),
+        Err(_) => return (StatusCode::OK, b"error: no").into_response(),
     };
 
     let score_header = match ScoreHeader::from_decrypted(&score_data) {
         Some(d) => d,
-        None => return (StatusCode::BAD_REQUEST, "error: score data < 2").into_response(),
+        None => return (StatusCode::OK, b"error: no").into_response(),
     };
 
     let user =
@@ -202,15 +203,28 @@ pub async fn submit_score(
             Err(response) => return response,
         };
 
+    // NOTE: a small combat for the "refx" client
+    if submission.refx() && osu_path_md5 != REFX_CURRENT_CLIENT_HASH {
+        tracing::warn!(
+            "<{} ({})> submitted a score in outdated/modified re;fx client! ({} != {})",
+            user.name,
+            user.id,
+            osu_path_md5,
+            REFX_CURRENT_CLIENT_HASH,
+        );
+
+        return (StatusCode::OK, b"error: no").into_response();
+    }
+
     let mut beatmap =
         match repository::beatmap::fetch_by_md5(&state.db, &score_header.map_md5).await {
             Ok(Some(beatmap)) => beatmap,
-            _ => return (StatusCode::BAD_REQUEST, "error: beatmap").into_response(),
+            _ => return (StatusCode::OK, b"error: beatmap").into_response(),
         };
 
     let mut score = match Score::from_submission(&score_data[2..]) {
         Some(score) => score,
-        None => return (StatusCode::BAD_REQUEST, "error: score").into_response(),
+        None => return (StatusCode::OK, b"error: no").into_response(),
     };
 
     let lock = state
@@ -230,7 +244,7 @@ pub async fn submit_score(
             user.name
         );
 
-        return (StatusCode::OK, "error: duplicate").into_response();
+        return (StatusCode::OK, b"error: no").into_response();
     }
 
     score.mode = score.mode() as i32;
@@ -329,7 +343,7 @@ pub async fn submit_score(
 
     score.id = match repository::score::insert(&state.db, &score, &beatmap).await {
         Ok(id) => id,
-        _ => return (StatusCode::INTERNAL_SERVER_ERROR, "error: insert").into_response(),
+        _ => return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response(),
     };
 
     if score.passed {
@@ -380,7 +394,7 @@ pub async fn submit_score(
             .await
         {
             Ok(Some(stats)) => stats,
-            _ => return (StatusCode::INTERNAL_SERVER_ERROR, "error: stats").into_response(),
+            _ => return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response(),
         };
 
     let prev_stats = stats.clone();
@@ -428,7 +442,7 @@ pub async fn submit_score(
             stats.rscore += additional_rscore as u64;
 
             if (recalculate(&state.db, &mut stats).await).is_err() {
-                return (StatusCode::INTERNAL_SERVER_ERROR, "error: recalculate").into_response();
+                return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
             }
 
             // TODO: send notification to player
@@ -447,7 +461,7 @@ pub async fn submit_score(
     }
 
     if (repository::stats::save(&state.db, &stats).await).is_err() {
-        return (StatusCode::INTERNAL_SERVER_ERROR, "error: save stats").into_response();
+        return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
     }
 
     if !user.restricted() {
