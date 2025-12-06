@@ -11,6 +11,7 @@ pub struct Config {
     pub redis: RedisConfig,
     pub omajinai: OmajinaiConfig,
     pub webhook: DiscordWebhookConfig,
+    pub osu: OsuConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +49,14 @@ pub struct DiscordWebhookConfig {
     pub debug: String, // dev server channel
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OsuConfig {
+    pub api_key: String,
+    // TODO: use v2?
+    //pub client_id: i32,
+    //pub client_secret: String,
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -57,6 +66,7 @@ impl Default for Config {
             redis: RedisConfig::default(),
             omajinai: OmajinaiConfig::default(),
             webhook: DiscordWebhookConfig::default(),
+            osu: OsuConfig::default(),
         }
     }
 }
@@ -102,6 +112,12 @@ impl Default for DiscordWebhookConfig {
             score: "https://discord.com/api/webhooks/123".into(),
             debug: "https://discord.com/api/webhooks/123".into(),
         }
+    }
+}
+
+impl Default for OsuConfig {
+    fn default() -> Self {
+        Self { api_key: "".into() }
     }
 }
 
@@ -166,6 +182,10 @@ impl Config {
         }
         if let Ok(discord_debug_webhook) = std::env::var("DISCORD_DEBUG_WEBHOOK") {
             config.webhook.debug = discord_debug_webhook;
+        }
+
+        if let Ok(osu_api_key) = std::env::var("OSU_API_KEY") {
+            config.osu.api_key = osu_api_key;
         }
 
         Ok(config)

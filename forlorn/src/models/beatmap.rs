@@ -31,6 +31,36 @@ pub struct Beatmap {
     pub diff: f32,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct BeatmapApiResponse {
+    #[serde(rename = "beatmap_id")]
+    pub id: String,
+    #[serde(rename = "beatmapset_id")]
+    pub set_id: String,
+    #[serde(rename = "file_md5")]
+    pub md5: String,
+    pub artist: String,
+    pub title: String,
+    pub version: String,
+    pub creator: String,
+    pub approved: String,
+    #[serde(rename = "total_length")]
+    pub total_length: String,
+    #[serde(rename = "max_combo")]
+    pub max_combo: Option<String>,
+    pub bpm: Option<String>,
+    #[serde(rename = "diff_size")]
+    pub cs: String,
+    #[serde(rename = "diff_approach")]
+    pub ar: String,
+    #[serde(rename = "diff_overall")]
+    pub od: String,
+    #[serde(rename = "diff_drain")]
+    pub hp: String,
+    #[serde(rename = "difficultyrating")]
+    pub diff: String,
+}
+
 impl Beatmap {
     pub fn full_name(&self) -> String {
         format!("{} - {} [{}]", self.artist, self.title, self.version)

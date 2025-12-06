@@ -130,11 +130,16 @@ pub async fn submit_score(
         return (StatusCode::OK, b"error: no").into_response();
     }
 
-    let mut beatmap =
-        match repository::beatmap::fetch_by_md5(&state.db, &score_header.map_md5).await {
-            Ok(Some(beatmap)) => beatmap,
-            _ => return (StatusCode::OK, b"error: beatmap").into_response(),
-        };
+    let mut beatmap = match repository::beatmap::fetch_by_md5(
+        &state.config.osu.api_key,
+        &state.db,
+        &score_header.map_md5,
+    )
+    .await
+    {
+        Ok(Some(beatmap)) => beatmap,
+        _ => return (StatusCode::OK, b"error: beatmap").into_response(),
+    };
 
     let mut score = match Score::from_submission(&score_data[2..]) {
         Some(score) => score,

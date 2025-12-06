@@ -7,7 +7,7 @@ pub mod stats;
 pub mod user;
 
 pub use achievement::{Achievement, Condition};
-pub use beatmap::Beatmap;
+pub use beatmap::{Beatmap, BeatmapApiResponse};
 pub use clan::Clan;
 pub use leaderboard::{LeaderboardScore, PersonalBest};
 pub use score::Score;
