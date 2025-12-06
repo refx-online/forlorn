@@ -26,7 +26,7 @@ use crate::{
         },
         stats::{get_computed_playtime, recalculate},
     },
-    utils::build_submission_charts,
+    utils::{build_submission, build_submission_charts},
 };
 
 const REFX_CURRENT_CLIENT_HASH: &str = "230cd99998f1a18dbc787612179bae0e";
@@ -50,114 +50,28 @@ async fn authenticate_user(
 }
 
 async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScoreSubmission, Response> {
-    let mut score_data_b64: Option<Vec<u8>> = None;
-    let mut replay_file: Option<Vec<u8>> = None;
-
-    // HACK: to count how many "score" fields are there
-    //       because osu! client sends both score data and replay file
-    //       with the same field name "score" (pepy why)
-    let mut score_count = 0;
-
+    let mut score_fields = Vec::new();
     let mut fields: HashMap<String, Bytes> = HashMap::new();
 
     while let Some(field) = multipart.next_field().await.ok().flatten() {
-        let name = field.name().map(|s| s.to_owned()).unwrap_or_default();
+        let name = field.name().unwrap_or_default().to_owned();
         let content = field.bytes().await.unwrap_or_default();
 
         if name == "score" {
-            if score_count == 0 {
-                score_data_b64 = Some(content.to_vec());
-            } else if score_count == 1 {
-                replay_file = Some(content.to_vec());
-            }
-
-            score_count += 1;
-            continue;
+            score_fields.push(content.to_vec());
+        } else {
+            fields.insert(name, content);
         }
-
-        fields.insert(name, content);
     }
 
-    let score_data_b64 =
-        score_data_b64.ok_or_else(|| (StatusCode::OK, b"error: no").into_response())?;
+    let [score_data_b64, replay_file]: [Vec<u8>; 2] = score_fields
+        .try_into()
+        .map_err(|_| (StatusCode::OK, b"error: no").into_response())?;
 
-    let replay_file = replay_file.ok_or_else(|| (StatusCode::OK, b"error: no").into_response())?;
-
-    let submission = ScoreSubmission {
-        exited_out: fields
-            .get("x")
-            .map(|b| String::from_utf8_lossy(b).to_string()),
-        fail_time: fields
-            .get("ft")
-            .and_then(|b| String::from_utf8_lossy(b).parse().ok())
-            .unwrap_or(0),
-        visual_settings_b64: fields
-            .get("fs")
-            .map(|b| String::from_utf8_lossy(b).to_string()),
-        updated_beatmap_hash: fields
-            .get("bmk")
-            .map(|b| String::from_utf8_lossy(b).to_string()),
-        storyboard_md5: fields
-            .get("sbk")
-            .map(|b| String::from_utf8_lossy(b).to_string()),
-        iv_b64: fields
-            .get("iv")
-            .ok_or_else(|| (StatusCode::OK, b"error: no").into_response())?
-            .clone(),
-        unique_ids: fields
-            .get("c1")
-            .map(|b| String::from_utf8_lossy(b).to_string()),
-        score_time: fields
-            .get("st")
-            .and_then(|b| String::from_utf8_lossy(b).parse().ok())
-            .unwrap_or(0),
-        password_md5: fields
-            .get("pass")
-            .map(|b| String::from_utf8_lossy(b).to_string())
-            .ok_or_else(|| (StatusCode::OK, b"error: pass").into_response())?,
-        osu_version: fields
-            .get("osuver")
-            .map(|b| String::from_utf8_lossy(b).to_string())
-            .ok_or_else(|| (StatusCode::OK, b"error: no").into_response())?,
-        client_hash_b64: fields
-            .get("s")
-            .ok_or_else(|| (StatusCode::OK, b"error: no").into_response())?
-            .clone(),
-        aim_value: fields
-            .get("acval")
-            .and_then(|b| String::from_utf8_lossy(b).parse().ok())
-            .unwrap_or(0),
-        ar_value: fields
-            .get("arval")
-            .and_then(|b| String::from_utf8_lossy(b).parse().ok())
-            .unwrap_or(0.0),
-        aim: fields
-            .get("ac")
-            .map(|b| String::from_utf8_lossy(b).to_string()),
-        arc: fields
-            .get("ar")
-            .map(|b| String::from_utf8_lossy(b).to_string()),
-        hdr: fields
-            .get("hdrem")
-            .map(|b| String::from_utf8_lossy(b).to_string()),
-        cs: fields
-            .get("cs")
-            .map(|b| String::from_utf8_lossy(b).to_string()),
-        tw: fields
-            .get("tw")
-            .map(|b| String::from_utf8_lossy(b).to_string()),
-        twval: fields
-            .get("twval")
-            .and_then(|b| String::from_utf8_lossy(b).parse().ok())
-            .unwrap_or(0.0),
-        refx: fields
-            .get("refx")
-            .map(|b| String::from_utf8_lossy(b).to_string()),
-        score_data_b64,
-        replay_file,
-    };
-
-    Ok(submission)
+    match build_submission(score_data_b64, replay_file, fields) {
+        Some(submission) => Ok(submission),
+        None => Err((StatusCode::OK, b"error: no").into_response()),
+    }
 }
 
 pub async fn submit_score(

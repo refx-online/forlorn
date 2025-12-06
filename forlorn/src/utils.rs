@@ -1,4 +1,9 @@
+use std::collections::HashMap;
+
+use axum::body::Bytes;
+
 use crate::{
+    dto::submission::ScoreSubmission,
     models::{Beatmap, LeaderboardScore, PersonalBest, Score, Stats, User},
     repository,
     state::AppState,
@@ -35,6 +40,46 @@ pub fn fmt_f(f: f32) -> String {
                 .unwrap_or_else(|_| format!("{f:.2}"))
         })
         .unwrap_or_else(|| format!("{f:.2}"))
+}
+
+pub fn build_submission(
+    score_data_b64: Vec<u8>,
+    replay_file: Vec<u8>,
+    fields: HashMap<String, Bytes>,
+) -> Option<ScoreSubmission> {
+    let get_string = |key: &str| -> Option<String> {
+        fields
+            .get(key)
+            .map(|b| String::from_utf8_lossy(b).to_string())
+    };
+    let get_i32 = |key: &str| -> i32 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0) };
+    let get_f32 =
+        |key: &str| -> f32 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0.0) };
+
+    Some(ScoreSubmission {
+        exited_out: get_string("x"),
+        fail_time: get_i32("ft"),
+        visual_settings_b64: get_string("fs"),
+        updated_beatmap_hash: get_string("bmk"),
+        storyboard_md5: get_string("sbk"),
+        iv_b64: fields.get("iv").cloned()?,
+        unique_ids: get_string("c1"),
+        score_time: get_i32("st"),
+        password_md5: get_string("pass")?,
+        osu_version: get_string("osuver")?,
+        client_hash_b64: fields.get("s").cloned()?,
+        aim_value: get_i32("acval"),
+        ar_value: get_f32("arval"),
+        aim: get_string("ac"),
+        arc: get_string("ar"),
+        hdr: get_string("hdrem"),
+        cs: get_string("cs"),
+        tw: get_string("tw"),
+        twval: get_f32("twval"),
+        refx: get_string("refx"),
+        score_data_b64,
+        replay_file,
+    })
 }
 
 fn chart_entry(key: &str, before: impl std::fmt::Display, after: impl std::fmt::Display) -> String {
