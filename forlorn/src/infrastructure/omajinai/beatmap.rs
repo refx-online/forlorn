@@ -22,6 +22,7 @@ pub async fn fetch_beatmap(config: &OmajinaiConfig, beatmap_id: i32) -> Result<V
 pub async fn api_get_beatmaps(
     api_key: &str,
     h: Option<&str>,
+    s: Option<&i32>,
 ) -> Result<Option<Vec<BeatmapApiResponse>>> {
     let mut params = vec![];
     let url = if api_key.is_empty() {
@@ -34,6 +35,10 @@ pub async fn api_get_beatmaps(
 
     if let Some(md5) = h {
         params.push(("h", md5.to_string()));
+    }
+
+    if let Some(set_id) = s {
+        params.push(("s", set_id.to_string()));
     }
 
     let response = CLIENT.get(url).query(&params).send().await?;
