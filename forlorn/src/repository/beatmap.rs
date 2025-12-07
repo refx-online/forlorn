@@ -75,8 +75,19 @@ pub async fn md5_from_database(db: &DbPoolManager, md5: &str) -> Result<Option<B
     .await?;
 
     if should_update_mapset(&set, last).await {
+        let mut cache = BEATMAP_CACHE.write().await;
+        cache.retain(|_, b| b.set_id != beatmap.set_id);
+
         return Ok(None); // we force refetch from api
     }
+
+    let mut cache = BEATMAP_CACHE.write().await;
+    for b in set {
+        // might as well cache them all
+        cache.insert(b.md5.clone(), b);
+    }
+
+    drop(cache);
 
     Ok(Some(beatmap))
 }
