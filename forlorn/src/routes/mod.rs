@@ -25,4 +25,8 @@ pub fn create_routes() -> Router<AppState> {
         .route("/web/refx-osz2-getscores.php", get(leaderboard::get_scores))
         .route("/web/osu-getreplay.php", get(replay::get_replay))
         .route("/web/refx-getreplay.php", get(replay::get_replay))
+        .route(
+            "/web/maps/{filename}",
+            get(leaderboard::get_updated_beatmap),
+        )
 }

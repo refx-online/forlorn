@@ -51,7 +51,7 @@ pub async fn api_get_beatmaps(
     Ok(Some(data))
 }
 
-pub fn parse_beatmap_from_api(data: BeatmapApiResponse) -> Beatmap {
+pub fn parse_beatmap_from_api(data: BeatmapApiResponse, direct: bool) -> Beatmap {
     let id = data.id.parse().unwrap_or(0);
     let set_id = data.set_id.parse().unwrap_or(0);
     let status = data.approved.parse().unwrap_or(0);
@@ -69,6 +69,27 @@ pub fn parse_beatmap_from_api(data: BeatmapApiResponse) -> Beatmap {
         data.artist, data.title, data.creator, data.version
     );
 
+    let status = if direct {
+        match status {
+            0 => RankedStatus::Ranked.as_i32(),
+            2 => RankedStatus::Pending.as_i32(),
+            3 => RankedStatus::Qualified.as_i32(),
+            5 => RankedStatus::Pending.as_i32(),
+            7 => RankedStatus::Ranked.as_i32(),
+            8 => RankedStatus::Loved.as_i32(),
+            _ => RankedStatus::UpdateAvailable.as_i32(),
+        }
+    } else {
+        match status {
+            -2..=0 => RankedStatus::Pending.as_i32(),
+            1 => RankedStatus::Ranked.as_i32(),
+            2 => RankedStatus::Approved.as_i32(),
+            3 => RankedStatus::Qualified.as_i32(),
+            4 => RankedStatus::Loved.as_i32(),
+            _ => RankedStatus::UpdateAvailable.as_i32(),
+        }
+    };
+
     let statuses = [
         RankedStatus::Ranked.as_i32(),
         RankedStatus::Approved.as_i32(),
@@ -77,7 +98,6 @@ pub fn parse_beatmap_from_api(data: BeatmapApiResponse) -> Beatmap {
     let frozen = statuses.contains(&status);
 
     Beatmap {
-        server: "osu!".into(),
         id,
         set_id,
         status,

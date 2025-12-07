@@ -6,7 +6,6 @@ use crate::constants::RankedStatus;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct Beatmap {
-    pub server: String,
     pub id: i32,
     pub set_id: i32,
     pub status: i32,

@@ -44,13 +44,13 @@ pub async fn md5_from_cache(md5: &str) -> Option<Beatmap> {
 
 pub async fn md5_from_database(db: &DbPoolManager, md5: &str) -> Result<Option<Beatmap>> {
     let beatmap = sqlx::query_as::<_, Beatmap>(
-        "select server, id, set_id, status, md5, artist, title, version, creator, filename, \
+        "select id, set_id, status, md5, artist, title, version, creator, filename, \
             last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff \
          from maps where md5 = ?"
     )
-        .bind(md5)
-        .fetch_optional(db.as_ref())
-        .await?;
+    .bind(md5)
+    .fetch_optional(db.as_ref())
+    .await?;
 
     Ok(beatmap)
 }
@@ -65,28 +65,25 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
     let beatmaps: Vec<Beatmap> = resp
         .unwrap()
         .into_iter()
-        .map(parse_beatmap_from_api)
+        .map(|d| parse_beatmap_from_api(d, api_key.is_empty())) // stupid
         .collect();
 
     for beatmap in &beatmaps {
-        tokio::spawn({
-            let db = db.clone();
-            let b = beatmap.clone();
-
-            async move {
-                let _ = save(&db.clone(), &b).await;
-            }
-        });
+        save(db, beatmap).await?;
     }
 
     Ok(beatmaps.into_iter().find(|b| b.md5 == md5))
 }
 
 pub async fn fetch_by_filename(db: &DbPoolManager, filename: &str) -> Result<Option<Beatmap>> {
-    let beatmap = sqlx::query_as::<_, Beatmap>("select * from maps where filename = ?")
-        .bind(filename)
-        .fetch_optional(db.as_ref())
-        .await?;
+    let beatmap = sqlx::query_as::<_, Beatmap>(
+        "select id, set_id, status, md5, artist, title, version, creator, filename, \
+            last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff \
+         from maps where filename = ?"
+    )
+    .bind(filename)
+    .fetch_optional(db.as_ref())
+    .await?;
 
     Ok(beatmap)
 }
@@ -107,7 +104,7 @@ async fn save(db: &DbPoolManager, beatmap: &Beatmap) -> Result<()> {
          filename, last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff) \
          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
-    .bind(&beatmap.server)
+    .bind("osu!") // TODO: private?
     .bind(beatmap.id)
     .bind(beatmap.set_id)
     .bind(beatmap.status)

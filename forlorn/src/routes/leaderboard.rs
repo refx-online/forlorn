@@ -1,9 +1,9 @@
 use std::time::Instant;
 
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Redirect, Response},
 };
 
 use crate::{
@@ -207,4 +207,8 @@ pub async fn get_scores(
     );
 
     (StatusCode::OK, leaderboard_response.into_bytes()).into_response()
+}
+
+pub async fn get_updated_beatmap(Path(filename): Path<String>) -> impl IntoResponse {
+    Redirect::permanent(&format!("https://osu.ppy.sh/web/maps/{filename}")).into_response()
 }
