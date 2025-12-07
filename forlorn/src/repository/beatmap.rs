@@ -110,6 +110,8 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
         .map(|d| parse_beatmap_from_api(d, api_key.is_empty())) // stupid
         .collect();
 
+    let api_map_ids: Vec<i32> = api_beatmaps.iter().map(|b| b.id).collect();
+
     let existing_maps: HashMap<i32, Beatmap> =
         sqlx::query_as::<_, Beatmap>("select * from maps where set_id = ?")
             .bind(set_id)
@@ -119,7 +121,24 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
             .map(|b| (b.id, b))
             .collect();
 
-    // TODO: remove stale maps
+    let stale_maps: Vec<&Beatmap> = existing_maps
+        .values()
+        .filter(|b| !api_map_ids.contains(&b.id))
+        .collect();
+
+    if !stale_maps.is_empty() {
+        for bmap in &stale_maps {
+            sqlx::query("delete from scores where map_md5 = ?")
+                .bind(&bmap.md5)
+                .execute(db.as_ref())
+                .await?;
+
+            sqlx::query("delete from maps where md5 = ?")
+                .bind(&bmap.md5)
+                .execute(db.as_ref())
+                .await?;
+        }
+    }
 
     let mut to_save = Vec::new();
     for beatmap in &api_beatmaps {
