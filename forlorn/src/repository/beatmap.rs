@@ -121,6 +121,7 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
 
     // TODO: remove stale maps
 
+    let mut to_save = Vec::new();
     for beatmap in &api_beatmaps {
         let mut m = beatmap.clone();
         if let Some(existing) = existing_maps.get(&beatmap.id) {
@@ -135,9 +136,10 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
                 m.status = existing.status;
             }
         }
-
-        save(db, &m).await?;
+        to_save.push(m);
     }
+
+    save(db, &to_save).await?;
 
     sqlx::query("replace into mapsets (id, server, last_osuapi_check) values (?, ?, ?)")
         .bind(set_id)
@@ -197,37 +199,47 @@ async fn should_update_mapset(
     }
 }
 
-async fn save(db: &DbPoolManager, beatmap: &Beatmap) -> Result<()> {
-    sqlx::query(
-        "replace into maps (server, id, set_id, status, md5, artist, title, version, creator, \
-         filename, last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff) \
-         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    )
-    .bind("osu!") // TODO: private?
-    .bind(beatmap.id)
-    .bind(beatmap.set_id)
-    .bind(beatmap.status)
-    .bind(&beatmap.md5)
-    .bind(&beatmap.artist)
-    .bind(&beatmap.title)
-    .bind(&beatmap.version)
-    .bind(&beatmap.creator)
-    .bind(&beatmap.filename)
-    .bind(beatmap.last_update)
-    .bind(beatmap.total_length)
-    .bind(beatmap.max_combo)
-    .bind(beatmap.frozen)
-    .bind(beatmap.plays)
-    .bind(beatmap.passes)
-    .bind(beatmap.mode)
-    .bind(beatmap.bpm)
-    .bind(beatmap.cs)
-    .bind(beatmap.ar)
-    .bind(beatmap.od)
-    .bind(beatmap.hp)
-    .bind(beatmap.diff)
-    .execute(db.as_ref())
-    .await?;
+async fn save(db: &DbPoolManager, beatmaps: &[Beatmap]) -> Result<()> {
+    if beatmaps.is_empty() {
+        return Ok(());
+    }
+
+    let mut tx = db.begin().await?;
+
+    for beatmap in beatmaps {
+        sqlx::query(
+            "replace into maps (server, id, set_id, status, md5, artist, title, version, creator, \
+             filename, last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff) \
+             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        .bind("osu!") // TODO: private?
+        .bind(beatmap.id)
+        .bind(beatmap.set_id)
+        .bind(beatmap.status)
+        .bind(&beatmap.md5)
+        .bind(&beatmap.artist)
+        .bind(&beatmap.title)
+        .bind(&beatmap.version)
+        .bind(&beatmap.creator)
+        .bind(&beatmap.filename)
+        .bind(beatmap.last_update)
+        .bind(beatmap.total_length)
+        .bind(beatmap.max_combo)
+        .bind(beatmap.frozen)
+        .bind(beatmap.plays)
+        .bind(beatmap.passes)
+        .bind(beatmap.mode)
+        .bind(beatmap.bpm)
+        .bind(beatmap.cs)
+        .bind(beatmap.ar)
+        .bind(beatmap.od)
+        .bind(beatmap.hp)
+        .bind(beatmap.diff)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
 
     Ok(())
 }
