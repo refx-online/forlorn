@@ -15,6 +15,8 @@ use crate::{
 pub static BEATMAP_CACHE: LazyLock<RwLock<HashMap<String, Beatmap>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
 
+const PRIVATE_INITIAL_SET_ID: i32 = 1000000000;
+
 pub async fn fetch_by_md5(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Option<Beatmap>> {
     if let Some(b) = md5_from_cache(md5).await {
         return Ok(Some(b));
@@ -57,6 +59,12 @@ pub async fn md5_from_database(db: &DbPoolManager, md5: &str) -> Result<Option<B
         Some(b) => b,
         None => return Ok(None),
     };
+
+    // we wont let our "private" maps to touch osu api for obvious reason
+    // todo: use server?
+    if beatmap.set_id >= PRIVATE_INITIAL_SET_ID {
+        return Ok(Some(beatmap));
+    }
 
     let set: Vec<Beatmap> = sqlx::query_as::<_, Beatmap>(
         "select id, set_id, status, md5, artist, title, version, creator, filename, \
