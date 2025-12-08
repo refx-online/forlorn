@@ -42,13 +42,11 @@ pub async fn api_get_beatmaps(
     }
 
     let response = CLIENT.get(url).query(&params).send().await?;
-
     if response.status() != 200 {
         return Ok(None);
     }
 
     let data: Vec<BeatmapApiResponse> = response.json().await?;
-
     if data.is_empty() {
         return Ok(None);
     }
@@ -75,6 +73,7 @@ pub fn parse_beatmap_from_api(data: BeatmapApiResponse, direct: bool) -> Beatmap
     );
 
     let status = if direct {
+        // direct api
         match status {
             0 => RankedStatus::Ranked.as_i32(),
             2 => RankedStatus::Pending.as_i32(),
@@ -85,6 +84,7 @@ pub fn parse_beatmap_from_api(data: BeatmapApiResponse, direct: bool) -> Beatmap
             _ => RankedStatus::UpdateAvailable.as_i32(),
         }
     } else {
+        // osu api
         match status {
             -2..=0 => RankedStatus::Pending.as_i32(),
             1 => RankedStatus::Ranked.as_i32(),
@@ -95,12 +95,12 @@ pub fn parse_beatmap_from_api(data: BeatmapApiResponse, direct: bool) -> Beatmap
         }
     };
 
-    let statuses = [
+    let frozen = [
         RankedStatus::Ranked.as_i32(),
         RankedStatus::Approved.as_i32(),
         RankedStatus::Loved.as_i32(),
-    ];
-    let frozen = statuses.contains(&status);
+    ]
+    .contains(&status);
 
     Beatmap {
         id,

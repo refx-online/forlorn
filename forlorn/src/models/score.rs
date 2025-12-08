@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
@@ -90,8 +90,7 @@ impl Score {
             passed: data[12] == "True",
             mode: data[13].parse().ok()?,
 
-            #[allow(deprecated)]
-            play_time: DateTime::from_utc(play_time, Utc),
+            play_time: Utc.from_utc_datetime(&play_time),
 
             client_flags: data[15].chars().filter(|&c| c == ' ').count() as i32 & !4,
 
@@ -168,7 +167,6 @@ impl Score {
         }
 
         let pp_caps = self.mode().pp_cap();
-
         if pp_caps.is_empty() {
             return (false, None);
         }

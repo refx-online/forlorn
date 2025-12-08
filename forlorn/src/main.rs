@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    tracing::info!("forlorn running on {addr}");
+    tracing::info!("running on {addr}");
 
     axum::serve(listener, app).await?;
 
