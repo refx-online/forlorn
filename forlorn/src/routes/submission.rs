@@ -118,6 +118,9 @@ pub async fn submit_score(
         };
 
     // NOTE: a small combat for the "refx" client
+    //       this shouldn't even get passed since bancho already handles this?
+    //       but for extra safety, maybe i should restrict them too?
+    //       since they most likely spoofed `GameBase.ClientHash`.
     if submission.refx() && osu_path_md5 != REFX_CURRENT_CLIENT_HASH {
         tracing::warn!(
             "<{} ({})> submitted a score in outdated/modified re;fx client! ({} != {})",
@@ -141,7 +144,7 @@ pub async fn submit_score(
         _ => return (StatusCode::OK, b"error: beatmap").into_response(),
     };
 
-    let mut score = match Score::from_submission(&score_data[2..]) {
+    let mut score = match Score::from_submission(&score_data[2..], score_header.map_md5, user.id) {
         Some(score) => score,
         None => return (StatusCode::OK, b"error: no").into_response(),
     };
@@ -167,14 +170,6 @@ pub async fn submit_score(
     }
 
     score.mode = score.mode() as i32;
-
-    // What the fuck.
-    // i genuinely forgot about score.map_md5 & score.userid and i somehow
-    // used that on some usecases functions without realizing its not "setted" yet
-    // this is actually a lesson for me to not name fields poorly and misunderstanding ;d
-    // TODO: REMOVE
-    score.map_md5 = score_header.map_md5;
-    score.userid = user.id;
 
     let _ = repository::user::update_latest_activity(&state.db, user.id).await;
 

@@ -67,7 +67,7 @@ pub struct Score {
 }
 
 impl Score {
-    pub fn from_submission(data: &[String]) -> Option<Self> {
+    pub fn from_submission(data: &[String], map_md5: String, user_id: i32) -> Option<Self> {
         if data.len() < 16 {
             return None;
         }
@@ -95,15 +95,16 @@ impl Score {
 
             client_flags: data[15].chars().filter(|&c| c == ' ').count() as i32 & !4,
 
+            map_md5,
+            userid: user_id,
+
             // will set later
             id: 0,
-            map_md5: String::new(),
             xp: 0.0,
             pp: 0.0,
             acc: 0.0,
             status: 0,
             time_elapsed: 0,
-            userid: 0,
             aim_correction_value: 0,
             ar_changer_value: 0.0,
             timewarp_value: 0.0,
