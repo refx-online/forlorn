@@ -1,6 +1,7 @@
 use crate::infrastructure::redis::RedisConnectionManager;
 
 pub mod announce;
+pub mod notify;
 pub mod refresh_stats;
 pub mod restrict;
 

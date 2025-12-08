@@ -12,7 +12,7 @@ use webhook::Webhook;
 use crate::{
     constants::{Grade, RankedStatus, SubmissionStatus},
     dto::submission::{ScoreHeader, ScoreSubmission},
-    infrastructure::redis::publish::{announce, refresh_stats, restrict},
+    infrastructure::redis::publish::{announce, notify, refresh_stats, restrict},
     models::{Score, User},
     repository,
     state::AppState,
@@ -359,7 +359,20 @@ pub async fn submit_score(
                 return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
             }
 
-            // TODO: send notification to player
+            // casts as i32 so "let there be negative"
+            // TODO: is this really a good name
+            let pp_lost_gained = stats.pp as i32 - prev_stats.pp as i32;
+            let mut notify_message = format!("yo achived #{}!, {}", score.rank, score.pp);
+
+            if beatmap.awards_ranked_pp() {
+                if pp_lost_gained > 0 {
+                    notify_message += &format!(" and gained {pp_lost_gained}");
+                } else {
+                    notify_message += &format!(" but lost {}", pp_lost_gained.abs());
+                }
+            }
+
+            let _ = notify::notify(&state.redis, user.id, &notify_message).await;
 
             if let Ok(new_rank) = repository::stats::update_rank(
                 &state.redis,
