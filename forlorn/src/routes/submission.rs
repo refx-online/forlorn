@@ -149,14 +149,14 @@ pub async fn submit_score(
         None => return (StatusCode::OK, b"error: no").into_response(),
     };
 
-    let lock = state
+    let submission_lock = state
         .score_locks
         .entry(score.online_checksum.clone())
         .or_insert_with(|| Arc::new(Mutex::new(())))
         .clone();
 
     // NOTE: to ensure no duplicates.
-    let _mutex_guard = lock.lock().await;
+    let _mutex_guard = submission_lock.lock().await;
 
     if let Ok(Some(_)) =
         repository::score::fetch_by_online_checksum(&state.db, &score.online_checksum).await
@@ -169,8 +169,9 @@ pub async fn submit_score(
         return (StatusCode::OK, b"error: no").into_response();
     }
 
-    score.mode = score.mode() as i32;
+    score.mode = score.mode().as_i32();
 
+    // always update last activity no matter what
     let _ = repository::user::update_latest_activity(&state.db, user.id).await;
 
     // idea: maybe, just maybe i could create another service that

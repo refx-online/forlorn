@@ -19,6 +19,7 @@ use routes::create_routes;
 use state::AppState;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
+use utils::shutdown_signal;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -51,7 +52,9 @@ async fn main() -> Result<()> {
 
     tracing::info!("running on {addr}");
 
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
 
     Ok(())
 }

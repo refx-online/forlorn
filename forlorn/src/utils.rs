@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
 use axum::body::Bytes;
+use tokio::signal::{
+    self,
+    unix::{self, SignalKind},
+};
 
 use crate::{
     dto::submission::ScoreSubmission,
@@ -210,4 +214,30 @@ pub async fn build_display_name(user: &User, state: &AppState) -> String {
     }
 
     user.name.clone()
+}
+
+pub async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        unix::signal(SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    tracing::info!("received termination signal, shutting down...");
 }
