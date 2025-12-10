@@ -203,7 +203,9 @@ pub async fn submit_score(
             score.uses_cs_changer
         );
 
-        let _ = webhook.post().await;
+        tokio::spawn(async move {
+            let _ = webhook.post().await;
+        });
 
         // NOTE: it's not a good idea to return here,
         //       we let them submit since its possibly their client's submission error.
@@ -250,7 +252,9 @@ pub async fn submit_score(
                 prev_holder,
             );
 
-            let _ = webhook.post().await;
+            tokio::spawn(async move {
+                let _ = webhook.post().await;
+            });
         }
 
         update_any_preexisting_personal_best(&state.db, &score).await;
