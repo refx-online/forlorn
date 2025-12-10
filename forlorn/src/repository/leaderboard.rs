@@ -9,14 +9,14 @@ fn cheat_columns(is_refx: bool) -> &'static str {
         ", s.aim_value, s.ar_value, s.aim, s.arc, s.cs, s.tw, s.twval, s.hdr"
     } else {
         // of course.
-        ", 0 as aim_value, \
-           0.0 as ar_value, \
-           false as aim, \
-           false as arc, \
-           false as cs, \
-           false as tw, \
-           0.0 as twval, \
-           false as hdr"
+        ", NULL as aim_value, \
+           NULL as ar_value, \
+           NULL as aim, \
+           NULL as arc, \
+           NULL as cs, \
+           NULL as tw, \
+           NULL as twval, \
+           NULL as hdr"
     }
 }
 
@@ -122,9 +122,10 @@ pub async fn fetch_personal_best_score(
         "select s.id, s.{} as preferred_metric, \
          s.max_combo, s.n50, s.n100, s.n300, \
          s.nmiss, s.nkatu, s.ngeki, s.perfect, s.mods, \
-         unix_timestamp(s.play_time) as play_time, 0 as userid, '' as name \
+         unix_timestamp(s.play_time) as play_time, u.id as userid, u.name as name \
          {} \
          from scores s \
+         inner join users u on u.id = s.userid \
          where s.map_md5 = ? and s.mode = ? \
          and s.userid = ? and s.status = 2 \
          order by preferred_metric desc limit 1",

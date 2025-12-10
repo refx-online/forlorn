@@ -154,13 +154,13 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
         if let Some(existing) = existing_maps.get(&beatmap.id) {
             m.plays = existing.plays;
             m.passes = existing.passes;
-            m.frozen = existing.frozen;
 
-            // this sounds right
-            if !existing.has_leaderboard() {
-                m.status = beatmap.status;
-            } else {
+            if existing.frozen {
                 m.status = existing.status;
+                m.frozen = true;
+            } else {
+                m.status = beatmap.status;
+                m.frozen = beatmap.frozen;
             }
         }
         to_save.push(m);

@@ -19,21 +19,21 @@ pub struct LeaderboardScore {
     pub name: String,
 
     #[sqlx(rename = "aim_value")]
-    pub aim_correction_value: i32,
+    pub aim_correction_value: Option<i32>,
     #[sqlx(rename = "ar_value")]
-    pub ar_changer_value: f32,
+    pub ar_changer_value: Option<f32>,
     #[sqlx(rename = "aim")]
-    pub uses_aim_correction: bool,
+    pub uses_aim_correction: Option<bool>,
     #[sqlx(rename = "arc")]
-    pub uses_ar_changer: bool,
+    pub uses_ar_changer: Option<bool>,
     #[sqlx(rename = "cs")]
-    pub uses_cs_changer: bool,
+    pub uses_cs_changer: Option<bool>,
     #[sqlx(rename = "tw")]
-    pub uses_timewarp: bool,
+    pub uses_timewarp: Option<bool>,
     #[sqlx(rename = "twval")]
-    pub timewarp_value: f32,
+    pub timewarp_value: Option<f32>,
     #[sqlx(rename = "hdr")]
-    pub uses_hd_remover: bool,
+    pub uses_hd_remover: Option<bool>,
 }
 
 pub struct PersonalBest {

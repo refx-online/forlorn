@@ -367,13 +367,13 @@ pub async fn submit_score(
             // casts as i32 so "let there be negative"
             // TODO: is this really a good name
             let pp_lost_gained = stats.pp as i32 - prev_stats.pp as i32;
-            let mut notify_message = format!("yo achived #{}!, {}", score.rank, score.pp);
+            let mut notify_message = format!("You achived #{}!, ({:.2}pp)", score.rank, score.pp);
 
             if beatmap.awards_ranked_pp() {
                 if pp_lost_gained > 0 {
-                    notify_message += &format!(" and gained {pp_lost_gained}");
+                    notify_message += &format!(" and gained {pp_lost_gained:.2}pp!");
                 } else {
-                    notify_message += &format!(" but lost {}", pp_lost_gained.abs());
+                    notify_message += &format!(" but lost {:.2}pp!", pp_lost_gained.abs());
                 }
             }
 

@@ -19,14 +19,14 @@ pub fn format_score_line(score: &LeaderboardScore, rank: i32, is_refx: bool) -> 
             score.userid,
             rank,
             score.play_time,
-            score.aim_correction_value,
-            score.ar_changer_value,
-            score.uses_aim_correction as i32,
-            score.uses_ar_changer as i32,
-            score.uses_cs_changer as i32,
-            score.uses_timewarp as i32,
-            score.timewarp_value,
-            score.uses_hd_remover as i32,
+            score.aim_correction_value.unwrap_or(0),
+            score.ar_changer_value.unwrap_or(0.0),
+            score.uses_aim_correction.unwrap_or(false) as i32,
+            score.uses_ar_changer.unwrap_or(false) as i32,
+            score.uses_cs_changer.unwrap_or(false) as i32,
+            score.uses_timewarp.unwrap_or(false) as i32,
+            score.timewarp_value.unwrap_or(0.0),
+            score.uses_hd_remover.unwrap_or(false) as i32,
         )
     } else {
         format!(
