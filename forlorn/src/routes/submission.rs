@@ -133,7 +133,7 @@ pub async fn submit_score(
         return (StatusCode::OK, b"error: no").into_response();
     }
 
-    let mut beatmap = match repository::beatmap::fetch_by_md5(
+    let beatmap = match repository::beatmap::fetch_by_md5(
         &state.config.osu.api_key,
         &state.db,
         &score_header.map_md5,
@@ -271,7 +271,10 @@ pub async fn submit_score(
             && !user.restricted()
             && score.status == SubmissionStatus::Best.as_i32()
         {
-            let _ = announce::announce(&state.redis, score.id).await;
+            let r = state.redis.clone();
+            tokio::spawn(async move {
+                let _ = announce::announce(&r, score.id).await;
+            });
         }
 
         const MIN_REPLAY_SIZE: usize = 24;
@@ -279,11 +282,16 @@ pub async fn submit_score(
         if submission.replay_file.len() >= MIN_REPLAY_SIZE {
             let replay_path = state.config.replay_path.join(format!("{}.osr", score.id));
 
-            if (tokio::fs::write(&replay_path, &submission.replay_file).await).is_err() {
-                // NOTE: not returning here since it would break submission (duh)
-            }
+            tokio::spawn(async move {
+                if (tokio::fs::write(&replay_path, &submission.replay_file).await).is_err() {
+                    // NOTE: not returning here since it would break submission (duh)
+                }
+            });
         } else {
-            let _ = restrict::restrict(&state.redis, user.id, "score submitter?").await;
+            let r = state.redis.clone();
+            tokio::spawn(async move {
+                let _ = restrict::restrict(&r, user.id, "score submitter?").await;
+            });
         }
 
         if let (true, Some(threshold)) = score.check_pp_cap(&user)
@@ -298,12 +306,15 @@ pub async fn submit_score(
                 threshold,
             );
 
-            let _ = restrict::restrict(
-                &state.redis,
-                user.id,
-                &format!("suspicious pp gain ({}pp)", score.pp.round(),),
-            )
-            .await;
+            {
+                let r = state.redis.clone();
+                let _ = restrict::restrict(
+                    &r,
+                    user.id,
+                    &format!("suspicious pp gain ({}pp)", score.pp.round(),),
+                )
+                .await;
+            }
         }
     }
 
@@ -367,17 +378,22 @@ pub async fn submit_score(
             // casts as i32 so "let there be negative"
             // TODO: is this really a good name
             let pp_lost_gained = stats.pp as i32 - prev_stats.pp as i32;
-            let mut notify_message = format!("You achived #{}!, ({:.2}pp)", score.rank, score.pp);
+            let mut notify_message = format!("You achieved #{}!, ({:.2}pp)", score.rank, score.pp);
 
             if beatmap.awards_ranked_pp() {
                 if pp_lost_gained > 0 {
                     notify_message += &format!(" and gained {pp_lost_gained:.2}pp!");
-                } else {
+                } else if pp_lost_gained < 0 {
                     notify_message += &format!(" but lost {:.2}pp!", pp_lost_gained.abs());
                 }
             }
 
-            let _ = notify::notify(&state.redis, user.id, &notify_message).await;
+            {
+                let r = state.redis.clone();
+                tokio::spawn(async move {
+                    let _ = notify::notify(&r, user.id, &notify_message).await;
+                });
+            }
 
             if let Ok(new_rank) = repository::stats::update_rank(
                 &state.redis,
@@ -397,8 +413,18 @@ pub async fn submit_score(
     }
 
     if !user.restricted() {
-        let _ = refresh_stats::refresh_stats(&state.redis, user.id).await;
-        let _ = increment_playcount(&state.db, &mut beatmap, score.passed).await;
+        let r = state.redis.clone();
+        tokio::spawn(async move {
+            let _ = refresh_stats::refresh_stats(&r, user.id).await;
+        });
+    }
+
+    if !user.restricted() {
+        let d = state.db.clone();
+        let mut b = beatmap.clone();
+        tokio::spawn(async move {
+            let _ = increment_playcount(&d, &mut b, score.passed).await;
+        });
     }
 
     let done = now.elapsed();
