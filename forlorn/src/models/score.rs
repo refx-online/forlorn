@@ -179,8 +179,10 @@ impl Score {
     pub fn total_hits(&self) -> u32 {
         let mut total_hits = self.n300 as u32 + self.n100 as u32 + self.n50 as u32;
 
-        if self.mode().ngeki_nkatu() {
+        if self.mode() == GameMode::VN_MANIA {
             total_hits += self.ngeki as u32 + self.nkatu as u32;
+        } else if self.mode() == GameMode::VN_CATCH || self.mode() == GameMode::RX_CATCH {
+            total_hits += self.nkatu as u32;
         }
 
         total_hits

@@ -58,13 +58,6 @@ impl GameMode {
         }
     }
 
-    pub fn ngeki_nkatu(self) -> bool {
-        matches!(
-            self,
-            GameMode::VN_TAIKO | GameMode::VN_MANIA | GameMode::RX_TAIKO
-        )
-    }
-
     pub fn cheat(self) -> bool {
         matches!(self, GameMode::CHEAT_OSU | GameMode::CHEAT_CHEAT_OSU)
     }
