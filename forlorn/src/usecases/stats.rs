@@ -40,7 +40,7 @@ pub async fn calculate_bonus(db: &DbPoolManager, stats: &Stats) -> Result<f32> {
     Ok(bonus_pp)
 }
 
-pub async fn get_computed_playtime(score: &Score, beatmap: &Beatmap) -> u32 {
+pub fn get_computed_playtime(score: &Score, beatmap: &Beatmap) -> u32 {
     if score.passed {
         beatmap.total_length as u32
     } else {

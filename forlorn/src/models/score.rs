@@ -175,4 +175,14 @@ impl Score {
 
         (self.pp > threshold as f32, Some(threshold))
     }
+
+    pub fn total_hits(&self) -> u32 {
+        let mut total_hits = self.n300 as u32 + self.n100 as u32 + self.n50 as u32;
+
+        if self.mode().ngeki_nkatu() {
+            total_hits += self.ngeki as u32 + self.nkatu as u32;
+        }
+
+        total_hits
+    }
 }

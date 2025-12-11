@@ -312,7 +312,7 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
     xp.max(0.0)
 }
 
-pub fn bind_cheat_values(score: &mut Score, fields: &ScoreSubmission) {
+pub fn consume_cheat_values(score: &mut Score, fields: &ScoreSubmission) {
     score.uses_aim_correction = fields.aim();
     score.aim_correction_value = fields.aim_value;
     score.uses_ar_changer = fields.arc();

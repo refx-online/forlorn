@@ -20,9 +20,9 @@ use crate::{
         beatmap::{ensure_local_osu_file, increment_playcount},
         password::verify_password,
         score::{
-            bind_cheat_values, calculate_accuracy, calculate_placement,
-            calculate_score_performance, calculate_status, calculate_xp, decrypt_score_data,
-            first_place_webhook, update_any_preexisting_personal_best, validate_cheat_values,
+            calculate_accuracy, calculate_placement, calculate_score_performance, calculate_status,
+            calculate_xp, consume_cheat_values, decrypt_score_data, first_place_webhook,
+            update_any_preexisting_personal_best, validate_cheat_values,
         },
         stats::{get_computed_playtime, recalculate},
     },
@@ -187,7 +187,7 @@ pub async fn submit_score(
     // ref: https://github.com/remeliah/meat-my-beat-i/blob/0121e875e142dbb7278ca4b171dd8c1095e26fb0/app/api/domains/osu.py#L719-L769
     //      https://github.com/remeliah/meat-my-beat-i/blob/main/app/usecases/ac.py
 
-    bind_cheat_values(&mut score, &submission);
+    consume_cheat_values(&mut score, &submission);
 
     if submission.refx() && !validate_cheat_values(&score) {
         let webhook = Webhook::new(&state.config.webhook.debug).content(format!(
@@ -336,15 +336,11 @@ pub async fn submit_score(
 
     let prev_stats = stats.clone();
 
-    stats.playtime += get_computed_playtime(&score, &beatmap).await;
+    stats.playtime += get_computed_playtime(&score, &beatmap);
     stats.plays += 1;
     stats.tscore += score.score as u64;
-    stats.total_hits += score.n300 as u32 + score.n100 as u32 + score.n50 as u32;
+    stats.total_hits += score.total_hits();
     stats.xp += score.xp.round() as i32;
-
-    if score.mode().ngeki_nkatu() {
-        stats.total_hits += score.ngeki as u32 + score.nkatu as u32;
-    }
 
     if score.passed && beatmap.has_leaderboard() {
         if score.max_combo as u32 > stats.max_combo {
