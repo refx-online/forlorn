@@ -49,7 +49,6 @@ pub async fn get_replay(
     let file = state.config.replay_path.join(format!("{}.osr", score.id));
 
     if user.id != score.userid {
-        // creating task here so incrementing replay views doesnt delay filestream....
         tokio::spawn(async move {
             let _ = repository::stats::increment_replay_views(
                 state.db.clone(),

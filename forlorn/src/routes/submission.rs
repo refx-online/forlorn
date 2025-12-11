@@ -130,6 +130,13 @@ pub async fn submit_score(
             REFX_CURRENT_CLIENT_HASH,
         );
 
+        {
+            let r = state.redis.clone();
+            tokio::spawn(async move {
+                let _ = notify::notify(&r, user.id, "Please update your client!").await;
+            });
+        }
+
         return (StatusCode::OK, b"error: no").into_response();
     }
 
