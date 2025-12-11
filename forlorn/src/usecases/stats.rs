@@ -44,7 +44,7 @@ pub fn get_computed_playtime(score: &Score, beatmap: &Beatmap) -> u32 {
     if score.passed {
         beatmap.total_length as u32
     } else {
-        let mut time_elapsed = score.time_elapsed as f32;
+        let mut time_elapsed = score.time_elapsed as f32 / 1000.0;
 
         if score.mods().contains(Mods::DOUBLETIME) {
             time_elapsed /= 1.5;
