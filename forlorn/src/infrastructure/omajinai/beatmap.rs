@@ -95,13 +95,6 @@ pub fn parse_beatmap_from_api(data: BeatmapApiResponse, direct: bool) -> Beatmap
         }
     };
 
-    let frozen = [
-        RankedStatus::Ranked.as_i32(),
-        RankedStatus::Approved.as_i32(),
-        RankedStatus::Loved.as_i32(),
-    ]
-    .contains(&status);
-
     Beatmap {
         id,
         set_id,
@@ -115,7 +108,7 @@ pub fn parse_beatmap_from_api(data: BeatmapApiResponse, direct: bool) -> Beatmap
         last_update: chrono::Utc::now(),
         total_length,
         max_combo,
-        frozen,
+        frozen: false,
         plays: 0,
         passes: 0,
         mode: 0,
@@ -125,5 +118,63 @@ pub fn parse_beatmap_from_api(data: BeatmapApiResponse, direct: bool) -> Beatmap
         od,
         hp,
         diff,
+    }
+}
+
+pub fn update_beatmap_from_api(beatmap: &mut Beatmap, data: &BeatmapApiResponse, direct: bool) {
+    beatmap.md5 = data.md5.clone();
+    beatmap.set_id = data.set_id.parse().unwrap_or(0);
+    beatmap.artist = data.artist.clone();
+    beatmap.title = data.title.clone();
+    beatmap.version = data.version.clone();
+    beatmap.creator = data.creator.clone();
+
+    beatmap.filename = format!(
+        "{} - {} ({}) [{}].osu",
+        data.artist, data.title, data.creator, data.version
+    );
+
+    beatmap.last_update = chrono::Utc::now();
+    beatmap.total_length = data.total_length.parse().unwrap_or(0);
+    beatmap.max_combo = data
+        .max_combo
+        .as_ref()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+
+    beatmap.bpm = data
+        .bpm
+        .as_ref()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.0);
+    beatmap.cs = data.cs.parse().unwrap_or(0.0);
+    beatmap.ar = data.ar.parse().unwrap_or(0.0);
+    beatmap.od = data.od.parse().unwrap_or(0.0);
+    beatmap.hp = data.hp.parse().unwrap_or(0.0);
+    beatmap.diff = data.diff.parse().unwrap_or(0.0);
+
+    if !beatmap.frozen {
+        let status = data.approved.parse().unwrap_or(0);
+
+        beatmap.status = if direct {
+            match status {
+                0 => RankedStatus::Ranked.as_i32(),
+                2 => RankedStatus::Pending.as_i32(),
+                3 => RankedStatus::Qualified.as_i32(),
+                5 => RankedStatus::Pending.as_i32(),
+                7 => RankedStatus::Ranked.as_i32(),
+                8 => RankedStatus::Loved.as_i32(),
+                _ => RankedStatus::UpdateAvailable.as_i32(),
+            }
+        } else {
+            match status {
+                -2..=0 => RankedStatus::Pending.as_i32(),
+                1 => RankedStatus::Ranked.as_i32(),
+                2 => RankedStatus::Approved.as_i32(),
+                3 => RankedStatus::Qualified.as_i32(),
+                4 => RankedStatus::Loved.as_i32(),
+                _ => RankedStatus::UpdateAvailable.as_i32(),
+            }
+        };
     }
 }

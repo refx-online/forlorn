@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 use crate::{
     infrastructure::{
         database::DbPoolManager,
-        omajinai::beatmap::{api_get_beatmaps, parse_beatmap_from_api},
+        omajinai::beatmap::{api_get_beatmaps, parse_beatmap_from_api, update_beatmap_from_api},
     },
     models::Beatmap,
 };
@@ -103,7 +103,43 @@ pub async fn md5_from_database(db: &DbPoolManager, md5: &str) -> Result<Option<B
 async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Option<Beatmap>> {
     let resp = match api_get_beatmaps(api_key, Some(md5), None).await? {
         Some(r) if !r.is_empty() => r,
-        _ => return Ok(None),
+        _ => {
+            // API returned 404, map deleted
+            let set_id_opt: Option<i32> =
+                sqlx::query_scalar("select set_id from maps where md5 = ?")
+                    .bind(md5)
+                    .fetch_optional(db.as_ref())
+                    .await?;
+
+            if let Some(set_id) = set_id_opt {
+                sqlx::query("delete from scores where map_md5 = ?")
+                    .bind(md5)
+                    .execute(db.as_ref())
+                    .await?;
+
+                sqlx::query("delete from maps where md5 = ?")
+                    .bind(md5)
+                    .execute(db.as_ref())
+                    .await?;
+
+                let remaining: i64 =
+                    sqlx::query_scalar("select count(*) from maps where set_id = ?")
+                        .bind(set_id)
+                        .fetch_one(db.as_ref())
+                        .await?;
+
+                if remaining == 0 {
+                    sqlx::query("delete from mapsets where id = ?")
+                        .bind(set_id)
+                        .execute(db.as_ref())
+                        .await?;
+                }
+                let mut cache = BEATMAP_CACHE.write().await;
+                cache.remove(md5);
+            }
+
+            return Ok(None);
+        },
     };
 
     let set_id: i32 = resp[0].set_id.parse().unwrap_or(0);
@@ -113,13 +149,6 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
         _ => return Ok(None),
     };
 
-    let api_beatmaps: Vec<Beatmap> = set_resp
-        .into_iter()
-        .map(|d| parse_beatmap_from_api(d, api_key.is_empty())) // stupid
-        .collect();
-
-    let api_map_ids: Vec<i32> = api_beatmaps.iter().map(|b| b.id).collect();
-
     let existing_maps: HashMap<i32, Beatmap> =
         sqlx::query_as::<_, Beatmap>("select * from maps where set_id = ?")
             .bind(set_id)
@@ -128,6 +157,8 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
             .into_iter()
             .map(|b| (b.id, b))
             .collect();
+
+    let api_map_ids: Vec<i32> = set_resp.iter().map(|d| d.id.parse().unwrap_or(0)).collect();
 
     let stale_maps: Vec<&Beatmap> = existing_maps
         .values()
@@ -149,21 +180,23 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
     }
 
     let mut to_save = Vec::new();
-    for beatmap in &api_beatmaps {
-        let mut m = beatmap.clone();
-        if let Some(existing) = existing_maps.get(&beatmap.id) {
-            m.plays = existing.plays;
-            m.passes = existing.passes;
+    for beatmap in &set_resp {
+        let map_id: i32 = beatmap.id.parse().unwrap_or(0);
 
-            if existing.frozen {
-                m.status = existing.status;
-                m.frozen = true;
-            } else {
-                m.status = beatmap.status;
-                m.frozen = beatmap.frozen;
-            }
+        if let Some(existing) = existing_maps.get(&map_id) {
+            let mut updated = existing.clone();
+            update_beatmap_from_api(&mut updated, beatmap, api_key.is_empty());
+
+            to_save.push(updated);
+        } else {
+            let mut new_map = parse_beatmap_from_api(beatmap.clone(), api_key.is_empty());
+
+            new_map.frozen = false;
+            new_map.plays = 0;
+            new_map.passes = 0;
+
+            to_save.push(new_map);
         }
-        to_save.push(m);
     }
 
     save(db, &to_save).await?;
@@ -175,7 +208,7 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
         .execute(db.as_ref())
         .await?;
 
-    Ok(api_beatmaps.into_iter().find(|b| b.md5 == md5))
+    Ok(to_save.into_iter().find(|b| b.md5 == md5))
 }
 
 pub async fn fetch_by_filename(db: &DbPoolManager, filename: &str) -> Result<Option<Beatmap>> {

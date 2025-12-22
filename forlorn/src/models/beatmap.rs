@@ -30,7 +30,7 @@ pub struct Beatmap {
     pub diff: f32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct BeatmapApiResponse {
     #[serde(rename = "beatmap_id")]
     pub id: String,
