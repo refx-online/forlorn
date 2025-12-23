@@ -6,6 +6,7 @@ mod models;
 mod repository;
 mod routes;
 mod state;
+mod storage;
 mod usecases;
 mod utils;
 
@@ -17,6 +18,7 @@ use dotenvy::dotenv;
 use infrastructure::{database, redis, redis::subscriber::SubscriberHandler, tasks};
 use routes::create_routes;
 use state::AppState;
+use storage::Storage;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 use utils::shutdown_signal;
@@ -31,7 +33,20 @@ async fn main() -> Result<()> {
     let db_pool = database::create_pool(&config.database).await?;
     let (redis_conn, subscriber_conn) = redis::create_connection(&config.redis).await?;
 
-    let state = AppState::new(config.clone(), db_pool, redis_conn, subscriber_conn);
+    let storage = Storage::new(
+        config.omajinai.beatmap_path.clone(),
+        config.replay_path.clone(),
+        config.screenshot_path.clone(),
+    );
+
+    let state = AppState::new(
+        config.clone(),
+        storage,
+        db_pool,
+        redis_conn,
+        subscriber_conn,
+    );
+
     let subscriber = SubscriberHandler::new(state.clone());
 
     tokio::spawn(tasks::cleanup_score_locks(state.score_locks.clone()));

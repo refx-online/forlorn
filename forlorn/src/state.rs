@@ -9,11 +9,13 @@ use crate::{
         database::DbPoolManager,
         redis::{RedisConnectionManager, RedisPubsubManager},
     },
+    storage::Storage,
 };
 
 #[derive(Clone)]
 pub struct AppState {
     pub config: Arc<Config>,
+    pub storage: Storage,
     pub db: DbPoolManager,
     pub redis: RedisConnectionManager,
     pub subscriber: RedisPubsubManager,
@@ -25,12 +27,14 @@ pub struct AppState {
 impl AppState {
     pub fn new(
         config: Arc<Config>,
+        storage: Storage,
         db: DbPoolManager,
         redis: RedisConnectionManager,
         subscriber: RedisPubsubManager,
     ) -> Self {
         Self {
             config,
+            storage,
             db,
             redis,
             subscriber,

@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use anyhow::Result;
 use md5::{Digest, Md5};
@@ -29,8 +29,11 @@ pub async fn increment_playcount(
     Ok(())
 }
 
-pub async fn ensure_local_osu_file(config: &OmajinaiConfig, beatmap: &Beatmap) -> Result<bool> {
-    let osu_file_path = config.beatmap_path.join(format!("{}.osu", beatmap.id));
+pub async fn ensure_local_osu_file(
+    osu_file_path: PathBuf,
+    config: &OmajinaiConfig,
+    beatmap: &Beatmap,
+) -> Result<bool> {
     let osu_file_bytes = if osu_file_path.exists() {
         fs::read(&osu_file_path)?
     } else {

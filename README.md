@@ -1,8 +1,12 @@
 # forlorn
-a service that handles everything scores related on refx. such as
+a service that handles everything /web/ related on refx. such as
 - score submission
 - ingame leaderboard
 - replay serving
+- screenshots
+- rating
+- direct (wip)
+- and other least essentials stuff
 
 ## don't tell me that name is from a song again
 too bad, [nasanoa - forlorn](https://on.soundcloud.com/fxjGoPiHQaIkVlUL1e)

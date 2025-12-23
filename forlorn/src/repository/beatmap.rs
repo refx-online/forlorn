@@ -224,16 +224,6 @@ pub async fn fetch_by_filename(db: &DbPoolManager, filename: &str) -> Result<Opt
     Ok(beatmap)
 }
 
-pub async fn fetch_average_rating(db: &DbPoolManager, map_md5: &str) -> Result<f32> {
-    let avg: Option<f32> = sqlx::query_scalar("select avg(rating) from ratings where map_md5 = ?")
-        .bind(map_md5)
-        .fetch_optional(db.as_ref())
-        .await?
-        .flatten();
-
-    Ok(avg.unwrap_or(0.0))
-}
-
 async fn should_update_mapset(
     beatmaps: &[Beatmap],
     last_osuapi_check: Option<DateTime<Utc>>,

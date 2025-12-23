@@ -1,9 +1,9 @@
 use std::time::Instant;
 
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Query, State},
     http::StatusCode,
-    response::{IntoResponse, Redirect, Response},
+    response::{IntoResponse, Response},
 };
 
 use crate::{
@@ -185,7 +185,7 @@ pub async fn get_scores(
         None
     };
 
-    let avg_rating = repository::beatmap::fetch_average_rating(&state.db, &leaderboard.map_md5)
+    let avg_rating = repository::rating::fetch_average_rating(&state.db, &leaderboard.map_md5)
         .await
         .unwrap_or(0.0);
 
@@ -207,8 +207,4 @@ pub async fn get_scores(
     );
 
     (StatusCode::OK, leaderboard_response.into_bytes()).into_response()
-}
-
-pub async fn get_updated_beatmap(Path(filename): Path<String>) -> impl IntoResponse {
-    Redirect::permanent(&format!("https://osu.ppy.sh/web/maps/{filename}")).into_response()
 }

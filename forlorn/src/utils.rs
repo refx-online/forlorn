@@ -7,7 +7,7 @@ use tokio::signal::{
 };
 
 use crate::{
-    dto::submission::ScoreSubmission,
+    dto::{screenshot::ScreenshotUpload, submission::ScoreSubmission},
     models::{Beatmap, LeaderboardScore, PersonalBest, Score, Stats, User},
     repository,
     state::AppState,
@@ -83,6 +83,22 @@ pub fn build_submission(
         refx: get_string("refx"),
         score_data_b64,
         replay_file,
+    })
+}
+
+pub fn build_screenshot_upload(fields: HashMap<String, Bytes>) -> Option<ScreenshotUpload> {
+    let get_string = |key: &str| -> Option<String> {
+        fields
+            .get(key)
+            .map(|b| String::from_utf8_lossy(b).to_string())
+    };
+    let get_i32 = |key: &str| -> Option<i32> { get_string(key).and_then(|s| s.parse().ok()) };
+
+    Some(ScreenshotUpload {
+        username: get_string("u")?,
+        password_md5: get_string("p")?,
+        version: get_i32("v"),
+        screenshot_data: fields.get("ss")?.to_vec(),
     })
 }
 
@@ -192,7 +208,7 @@ pub fn build_leaderboard_response(
 }
 
 pub async fn build_empty_leaderboard(beatmap: &Beatmap, state: &AppState) -> String {
-    let avg_rating = repository::beatmap::fetch_average_rating(&state.db, &beatmap.md5)
+    let avg_rating = repository::rating::fetch_average_rating(&state.db, &beatmap.md5)
         .await
         .unwrap_or(0.0);
 

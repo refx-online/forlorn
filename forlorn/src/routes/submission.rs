@@ -222,7 +222,13 @@ pub async fn submit_score(
 
     score.acc = calculate_accuracy(&score);
 
-    if let Ok(true) = ensure_local_osu_file(&state.config.omajinai, &beatmap).await {
+    if let Ok(true) = ensure_local_osu_file(
+        state.storage.beatmap_file(beatmap.id),
+        &state.config.omajinai,
+        &beatmap,
+    )
+    .await
+    {
         (score.pp, score.stars, score.hypothetical_pp) =
             calculate_score_performance(&state.config.omajinai, &score, beatmap.id).await;
 
@@ -287,7 +293,7 @@ pub async fn submit_score(
         const MIN_REPLAY_SIZE: usize = 24;
 
         if submission.replay_file.len() >= MIN_REPLAY_SIZE {
-            let replay_path = state.config.replay_path.join(format!("{}.osr", score.id));
+            let replay_path = state.storage.replay_file(score.id);
 
             tokio::spawn(async move {
                 if (tokio::fs::write(&replay_path, &submission.replay_file).await).is_err() {

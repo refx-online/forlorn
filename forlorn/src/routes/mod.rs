@@ -1,6 +1,9 @@
+pub mod essentials;
 pub mod health;
 pub mod leaderboard;
+pub mod rating;
 pub mod replay;
+pub mod screenshot;
 pub mod submission;
 
 use axum::{
@@ -15,15 +18,20 @@ pub fn create_routes() -> Router<AppState> {
         .route("/health", get(health::health))
         // osu route
         .route(
-            "/web/maps/{filename}",
-            get(leaderboard::get_updated_beatmap),
-        )
-        .route(
             "/web/osu-submit-modular-selector.php",
             post(submission::submit_score),
         )
+        .route(
+            "/web/bancho_osu_connect.php",
+            get(essentials::get_bancho_connect),
+        )
+        .route(
+            "/web/osu-screenshot.php",
+            get(screenshot::upload_screenshot),
+        )
         .route("/web/osu-osz2-getscores.php", get(leaderboard::get_scores))
         .route("/web/osu-getreplay.php", get(replay::get_replay))
+        .route("/web/osu-rate.php", get(rating::get_rating))
         // refx route
         // TODO: ask myself in the future to revert these ancient routes
         //       to its original route, so i dont have to
@@ -32,6 +40,23 @@ pub fn create_routes() -> Router<AppState> {
             "/web/refx-submit-modular.php",
             post(submission::submit_score),
         )
+        .route(
+            "/web/bancho_refx_connect.php",
+            get(essentials::get_bancho_connect),
+        )
+        .route(
+            "/web/refx-screenshot.php",
+            get(screenshot::upload_screenshot),
+        )
         .route("/web/refx-osz2-getscores.php", get(leaderboard::get_scores))
         .route("/web/refx-getreplay.php", get(replay::get_replay))
+        .route("/web/refx-rate.php", get(rating::get_rating))
+        // essentials
+        .route("/web/maps/{filename}", get(essentials::get_updated_beatmap))
+        .route("/web/check-updates.php", get(essentials::get_check_updates))
+        .route("/p/doyoureallywanttoaskpeppy", get(essentials::get_peppy))
+        .route(
+            "/ss/{screenshot_id}.{extension}",
+            get(screenshot::get_screenshot),
+        )
 }
