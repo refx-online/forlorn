@@ -1,4 +1,5 @@
 pub mod beatmap;
+pub mod favourite;
 pub mod leaderboard;
 pub mod rating;
 pub mod replay;

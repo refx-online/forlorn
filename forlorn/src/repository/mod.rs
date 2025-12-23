@@ -1,6 +1,7 @@
 pub mod achievement;
 pub mod beatmap;
 pub mod clan;
+pub mod favourite;
 pub mod leaderboard;
 pub mod rating;
 pub mod score;
