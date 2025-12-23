@@ -37,6 +37,7 @@ async fn main() -> Result<()> {
         config.omajinai.beatmap_path.clone(),
         config.replay_path.clone(),
         config.screenshot_path.clone(),
+        config.osz_path.clone(),
     );
 
     let state = AppState::new(

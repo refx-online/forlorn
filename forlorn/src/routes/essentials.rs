@@ -11,6 +11,7 @@ use crate::{
 };
 
 const PRIVATE_INITIAL_MAP_ID: i32 = 1000000000;
+const PRIVATE_INITIAL_SET_ID: i32 = 1000000000;
 
 async fn authenticate_user(
     state: &AppState,
@@ -52,6 +53,31 @@ pub async fn get_updated_beatmap(
 
     match FileStream::from_path(file).await {
         Ok(osu) => osu.into_response(),
+        Err(_) => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
+pub async fn get_osz(
+    State(state): State<AppState>,
+    Path(mapset_id): Path<String>,
+) -> impl IntoResponse {
+    let mapset_id: i32 = match mapset_id.parse() {
+        Ok(id) => id,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
+    };
+
+    if mapset_id < PRIVATE_INITIAL_SET_ID {
+        return Redirect::permanent(&format!(
+            "{}/{mapset_id}",
+            state.config.mirror_download_endpoint
+        ))
+        .into_response();
+    }
+
+    let file = state.storage.osz_file(mapset_id);
+
+    match FileStream::from_path(file).await {
+        Ok(osz) => osz.into_response(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
 }

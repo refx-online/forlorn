@@ -84,4 +84,5 @@ pub fn create_routes() -> Router<AppState> {
             "/ss/{screenshot_id}.{extension}",
             get(screenshot::get_screenshot),
         )
+        .route("/d/{mapset_id}", get(essentials::get_osz))
 }
