@@ -1,5 +1,6 @@
 pub mod beatmap;
 pub mod channel;
+pub mod direct;
 pub mod essentials;
 pub mod favourite;
 pub mod health;
@@ -45,6 +46,11 @@ pub fn create_routes() -> Router<AppState> {
         .route("/web/lastfm.php", get(lastfm::get_lastfm))
         .route("/web/osu-getfriends.php", get(essentials::get_friends))
         .route("/web/osu-markasread.php", get(channel::mark_as_read))
+        .route("/web/osu-search.php", get(direct::get_direct_search))
+        .route(
+            "/web/osu-search-set.php",
+            get(direct::get_direct_search_set),
+        )
         // refx route
         // TODO: ask myself in the future to revert these ancient routes
         //       to its original route, so i dont have to
@@ -76,6 +82,11 @@ pub fn create_routes() -> Router<AppState> {
         .route("/web/firstam.php", get(lastfm::get_lastfm))
         .route("/web/refx-getfriends.php", get(essentials::get_friends))
         .route("/web/refx-markasread.php", get(channel::mark_as_read))
+        .route("/web/refx-search.php", get(direct::get_direct_search))
+        .route(
+            "/web/refx-search-set.php",
+            get(direct::get_direct_search_set),
+        )
         // essentials
         .route("/web/maps/{filename}", get(essentials::get_updated_beatmap))
         .route("/web/check-updates.php", get(essentials::get_check_updates))

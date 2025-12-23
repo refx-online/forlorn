@@ -44,4 +44,26 @@ impl RankedStatus {
     pub fn as_i32(&self) -> i32 {
         *self as i32
     }
+
+    pub fn as_osu_api(&self) -> i32 {
+        match self {
+            RankedStatus::Pending => 0,
+            RankedStatus::Ranked => 1,
+            RankedStatus::Approved => 2,
+            RankedStatus::Qualified => 3,
+            RankedStatus::Loved => 4,
+            RankedStatus::UpdateAvailable => -2,
+        }
+    }
+
+    pub fn from_osudirect(osudirect_status: i32) -> Self {
+        match osudirect_status {
+            0 | 7 => RankedStatus::Ranked,
+            2 | 5 => RankedStatus::Pending,
+            3 => RankedStatus::Qualified,
+            // 4: all ranked statuses
+            8 => RankedStatus::Loved,
+            _ => RankedStatus::UpdateAvailable,
+        }
+    }
 }

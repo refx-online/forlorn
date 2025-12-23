@@ -27,8 +27,8 @@ impl Storage {
         self.beatmap_path.join(format!("{beatmap_id}.osu"))
     }
 
-    pub fn osz_file(&self, beatmap_id: i32) -> PathBuf {
-        self.osz_path.join(format!("{beatmap_id}.osz"))
+    pub fn osz_file(&self, mapset_id: i32) -> PathBuf {
+        self.osz_path.join(format!("{mapset_id}.osz"))
     }
 
     pub fn replay_file(&self, score_id: u64) -> PathBuf {

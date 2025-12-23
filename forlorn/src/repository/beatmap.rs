@@ -10,7 +10,7 @@ use crate::{
         database::DbPoolManager,
         omajinai::beatmap::{api_get_beatmaps, parse_beatmap_from_api, update_beatmap_from_api},
     },
-    models::Beatmap,
+    models::{Beatmap, BeatmapSetInfo},
 };
 
 pub static BEATMAP_CACHE: LazyLock<RwLock<HashMap<String, Beatmap>>> =
@@ -230,6 +230,47 @@ pub async fn fetch_by_filename(db: &DbPoolManager, filename: &str) -> Result<Opt
     Ok(beatmap)
 }
 
+pub async fn fetch_many(
+    db: &DbPoolManager,
+    mode: Option<i32>,
+    ranked_status: Option<i32>,
+    page: i32,
+    page_size: i64,
+) -> Result<Vec<Beatmap>> {
+    let mut query = String::from(
+        "select id, set_id, status, md5, artist, title, version, creator, filename, \
+         last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff \
+         from maps",
+    );
+
+    let mut cond = Vec::new();
+
+    if let Some(m) = mode {
+        cond.push(format!("mode = {}", m));
+    }
+
+    if let Some(rs) = ranked_status {
+        cond.push(format!("status = {}", rs));
+    }
+
+    if !cond.is_empty() {
+        query.push_str(" where ");
+        query.push_str(&cond.join(" and "));
+    }
+
+    let page = page.max(1);
+    let limit = page_size.clamp(1, 1000) as i32;
+    let offset = (page - 1) * limit;
+
+    query.push_str(&format!(" limit {} offset {}", limit, offset));
+
+    let beatmaps = sqlx::query_as::<_, Beatmap>(&query)
+        .fetch_all(db.as_ref())
+        .await?;
+
+    Ok(beatmaps)
+}
+
 async fn should_update_mapset(
     beatmaps: &[Beatmap],
     last_osuapi_check: Option<DateTime<Utc>>,
@@ -253,6 +294,48 @@ async fn should_update_mapset(
         Some(last) => Utc::now() > last + check,
         None => true,
     }
+}
+
+pub async fn fetch_set_by_set_id(
+    db: &DbPoolManager,
+    set_id: i32,
+) -> Result<Option<BeatmapSetInfo>> {
+    let result = sqlx::query_as::<_, BeatmapSetInfo>(
+        "select distinct set_id, artist, title, status, creator, last_update \
+         from maps where set_id = ?",
+    )
+    .bind(set_id)
+    .fetch_optional(db.as_ref())
+    .await?;
+
+    Ok(result)
+}
+
+pub async fn fetch_set_by_map_id(
+    db: &DbPoolManager,
+    map_id: i32,
+) -> Result<Option<BeatmapSetInfo>> {
+    let result = sqlx::query_as::<_, BeatmapSetInfo>(
+        "select distinct set_id, artist, title, status, creator, last_update \
+         from maps where id = ?",
+    )
+    .bind(map_id)
+    .fetch_optional(db.as_ref())
+    .await?;
+
+    Ok(result)
+}
+
+pub async fn fetch_set_by_md5(db: &DbPoolManager, md5: &String) -> Result<Option<BeatmapSetInfo>> {
+    let result = sqlx::query_as::<_, BeatmapSetInfo>(
+        "select distinct set_id, artist, title, status, creator, last_update \
+         from maps where md5 = ?",
+    )
+    .bind(md5)
+    .fetch_optional(db.as_ref())
+    .await?;
+
+    Ok(result)
 }
 
 async fn save(db: &DbPoolManager, beatmaps: &[Beatmap]) -> Result<()> {
