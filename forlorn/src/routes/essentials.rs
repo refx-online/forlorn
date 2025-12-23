@@ -1,13 +1,34 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
-    response::{IntoResponse, Redirect},
+    response::{IntoResponse, Redirect, Response},
 };
 use axum_extra::response::file_stream::FileStream;
 
-use crate::{repository, state::AppState};
+use crate::{
+    dto::friends::GetFriends, models::User, repository, state::AppState,
+    usecases::password::verify_password,
+};
 
 const PRIVATE_INITIAL_MAP_ID: i32 = 1000000000;
+
+async fn authenticate_user(
+    state: &AppState,
+    password_md5: &str,
+    username: &str,
+) -> Result<User, Response> {
+    let user = match repository::user::fetch_by_name(&state.db, username).await {
+        Ok(Some(user)) => user,
+        _ => {
+            return Err(StatusCode::OK.into_response());
+        },
+    };
+
+    match verify_password(password_md5, &user.pw_bcrypt).await {
+        Ok(true) => Ok(user),
+        _ => Err(StatusCode::OK.into_response()),
+    }
+}
 
 pub async fn get_peppy() -> impl IntoResponse {
     StatusCode::OK
@@ -42,4 +63,27 @@ pub async fn get_bancho_connect() -> impl IntoResponse {
 // todo: implement this? and maybe move to assets-service
 pub async fn get_check_updates() -> impl IntoResponse {
     StatusCode::OK
+}
+
+pub async fn get_friends(
+    State(state): State<AppState>,
+    Query(query): Query<GetFriends>,
+) -> impl IntoResponse {
+    let user = match authenticate_user(&state, &query.password_md5, &query.username).await {
+        Ok(user) => user,
+        Err(resp) => return resp,
+    };
+
+    let friends = match repository::user::fetch_friend_ids(&state.db, user.id).await {
+        Ok(ids) => ids,
+        Err(_) => return (StatusCode::OK, b"error: db").into_response(),
+    };
+
+    let friend = friends
+        .iter()
+        .map(|id| id.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    (StatusCode::OK, friend).into_response()
 }

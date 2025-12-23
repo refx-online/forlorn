@@ -42,6 +42,7 @@ pub fn create_routes() -> Router<AppState> {
         .route("/web/osu-getfavourites.php", get(favourite::get_favourites))
         .route("/web/osu-addfavourite.php", get(favourite::add_favourites))
         .route("/web/lastfm.php", get(lastfm::get_lastfm))
+        .route("/web/osu-getfriends.php", get(essentials::get_friends))
         // refx route
         // TODO: ask myself in the future to revert these ancient routes
         //       to its original route, so i dont have to
@@ -71,6 +72,7 @@ pub fn create_routes() -> Router<AppState> {
         )
         .route("/web/refx-addfavourite.php", get(favourite::add_favourites))
         .route("/web/firstam.php", get(lastfm::get_lastfm))
+        .route("/web/refx-getfriends.php", get(essentials::get_friends))
         // essentials
         .route("/web/maps/{filename}", get(essentials::get_updated_beatmap))
         .route("/web/check-updates.php", get(essentials::get_check_updates))
