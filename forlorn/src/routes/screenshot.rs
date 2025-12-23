@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use axum::{
     body::Bytes,
     extract::{Multipart, Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
 use axum_extra::response::file_stream::FileStream;
@@ -51,8 +51,20 @@ async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScreenshotUp
 
 pub async fn upload_screenshot(
     State(state): State<AppState>,
+    headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Response {
+    let user_agent = headers
+        .get("user-agent")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("");
+
+    if user_agent != "osu!" {
+        // todo: restrict?
+        //       most likely a bot
+        return (StatusCode::OK, b"error: oldver").into_response();
+    }
+
     let upload = match parse_typed_multipart(&mut multipart).await {
         Ok(u) => u,
         Err(response) => return response,
