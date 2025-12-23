@@ -76,6 +76,16 @@ pub async fn create_user_achievement(
     Ok(())
 }
 
+pub async fn mark_conversation_as_read(db: &DbPoolManager, from_id: i32, to_id: i32) -> Result<()> {
+    sqlx::query("update read set read = true where to_id = ? and from_id = ? and read = false")
+        .bind(to_id)
+        .bind(from_id)
+        .execute(db.as_ref())
+        .await?;
+
+    Ok(())
+}
+
 pub async fn update_latest_activity(db: &DbPoolManager, user_id: i32) -> Result<()> {
     let time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)

@@ -1,4 +1,5 @@
 pub mod beatmap;
+pub mod channel;
 pub mod favourite;
 pub mod friends;
 pub mod lastfm;
