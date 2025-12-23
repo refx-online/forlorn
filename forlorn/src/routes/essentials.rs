@@ -67,11 +67,8 @@ pub async fn get_osz(
     };
 
     if mapset_id < PRIVATE_INITIAL_SET_ID {
-        return Redirect::permanent(&format!(
-            "{}/{mapset_id}",
-            state.config.mirror_download_endpoint
-        ))
-        .into_response();
+        return Redirect::permanent(&format!("{}/d/{mapset_id}", state.config.mirror_endpoint))
+            .into_response();
     }
 
     let file = state.storage.osz_file(mapset_id);

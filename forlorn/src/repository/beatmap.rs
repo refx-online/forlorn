@@ -5,6 +5,7 @@ use chrono::{DateTime, Duration, Utc};
 use tokio::sync::RwLock;
 
 use crate::{
+    config::Config,
     infrastructure::{
         database::DbPoolManager,
         omajinai::beatmap::{api_get_beatmaps, parse_beatmap_from_api, update_beatmap_from_api},
@@ -17,7 +18,11 @@ pub static BEATMAP_CACHE: LazyLock<RwLock<HashMap<String, Beatmap>>> =
 
 const PRIVATE_INITIAL_SET_ID: i32 = 1000000000;
 
-pub async fn fetch_by_md5(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Option<Beatmap>> {
+pub async fn fetch_by_md5(
+    config: &Config,
+    db: &DbPoolManager,
+    md5: &str,
+) -> Result<Option<Beatmap>> {
     if let Some(b) = md5_from_cache(md5).await {
         return Ok(Some(b));
     }
@@ -29,7 +34,7 @@ pub async fn fetch_by_md5(api_key: &str, db: &DbPoolManager, md5: &str) -> Resul
         return Ok(Some(b));
     }
 
-    if let Some(b) = md5_from_api(api_key, db, md5).await? {
+    if let Some(b) = md5_from_api(config, db, md5).await? {
         let mut cache = BEATMAP_CACHE.write().await;
         cache.insert(md5.to_string(), b.clone());
 
@@ -100,8 +105,8 @@ pub async fn md5_from_database(db: &DbPoolManager, md5: &str) -> Result<Option<B
     Ok(Some(beatmap))
 }
 
-async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Option<Beatmap>> {
-    let resp = match api_get_beatmaps(api_key, Some(md5), None).await? {
+async fn md5_from_api(config: &Config, db: &DbPoolManager, md5: &str) -> Result<Option<Beatmap>> {
+    let resp = match api_get_beatmaps(config, Some(md5), None).await? {
         Some(r) if !r.is_empty() => r,
         _ => {
             // API returned 404, map deleted
@@ -144,7 +149,7 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
 
     let set_id: i32 = resp[0].set_id.parse().unwrap_or(0);
 
-    let set_resp = match api_get_beatmaps(api_key, None, Some(&set_id)).await? {
+    let set_resp = match api_get_beatmaps(config, None, Some(&set_id)).await? {
         Some(r) if !r.is_empty() => r,
         _ => return Ok(None),
     };
@@ -185,11 +190,12 @@ async fn md5_from_api(api_key: &str, db: &DbPoolManager, md5: &str) -> Result<Op
 
         if let Some(existing) = existing_maps.get(&map_id) {
             let mut updated = existing.clone();
-            update_beatmap_from_api(&mut updated, beatmap, api_key.is_empty());
+            update_beatmap_from_api(&mut updated, beatmap, config.osu.api_key.is_empty());
 
             to_save.push(updated);
         } else {
-            let mut new_map = parse_beatmap_from_api(beatmap.clone(), api_key.is_empty());
+            let mut new_map =
+                parse_beatmap_from_api(beatmap.clone(), config.osu.api_key.is_empty());
 
             new_map.frozen = false;
             new_map.plays = 0;

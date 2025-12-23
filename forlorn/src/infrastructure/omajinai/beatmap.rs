@@ -3,7 +3,7 @@ use std::sync::LazyLock;
 use anyhow::Result;
 
 use crate::{
-    config::OmajinaiConfig,
+    config::{Config, OmajinaiConfig},
     constants::RankedStatus,
     models::{Beatmap, BeatmapApiResponse},
 };
@@ -20,15 +20,15 @@ pub async fn fetch_beatmap(config: &OmajinaiConfig, beatmap_id: i32) -> Result<V
 }
 
 pub async fn api_get_beatmaps(
-    api_key: &str,
+    config: &Config,
     h: Option<&str>,
     s: Option<&i32>,
 ) -> Result<Option<Vec<BeatmapApiResponse>>> {
     let mut params = vec![];
-    let url = if api_key.is_empty() {
-        "https://osu.direct/api/get_beatmaps"
+    let url = if config.osu.api_key.is_empty() {
+        &format!("{}/api/get_beatmaps", config.mirror_endpoint)
     } else {
-        params.push(("k", api_key.into()));
+        params.push(("k", config.osu.api_key.clone()));
 
         "https://old.ppy.sh/api/get_beatmaps"
     };

@@ -93,19 +93,16 @@ pub async fn get_scores(
 
     let leaderboard_type = LeaderboardType::from_i32(leaderboard.leaderboard_type);
 
-    let beatmap = match repository::beatmap::fetch_by_md5(
-        &state.config.osu.api_key,
-        &state.db,
-        &leaderboard.map_md5,
-    )
-    .await
-    {
-        Ok(Some(beatmap)) => beatmap,
-        Ok(None) => {
-            return handle_missing_beatmap(&state, &leaderboard).await;
-        },
-        Err(_) => return (StatusCode::OK, b"error: db").into_response(),
-    };
+    let beatmap =
+        match repository::beatmap::fetch_by_md5(&state.config, &state.db, &leaderboard.map_md5)
+            .await
+        {
+            Ok(Some(beatmap)) => beatmap,
+            Ok(None) => {
+                return handle_missing_beatmap(&state, &leaderboard).await;
+            },
+            Err(_) => return (StatusCode::OK, b"error: db").into_response(),
+        };
 
     if beatmap.status < RankedStatus::Ranked.as_i32() {
         return (

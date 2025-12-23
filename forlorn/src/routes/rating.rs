@@ -41,7 +41,7 @@ pub async fn get_rating(
         let _ = repository::rating::insert(&state.db, &rating.map_md5, user.id, rate).await;
     } else {
         let beatmap = match repository::beatmap::fetch_by_md5(
-            &state.config.osu.api_key,
+            &state.config,
             &state.db,
             &rating.map_md5,
         )

@@ -9,7 +9,7 @@ pub struct Config {
     pub replay_path: PathBuf,
     pub screenshot_path: PathBuf,
     pub osz_path: PathBuf,
-    pub mirror_download_endpoint: String,
+    pub mirror_endpoint: String,
     pub database: DatabaseConfig,
     pub redis: RedisConfig,
     pub omajinai: OmajinaiConfig,
@@ -67,7 +67,7 @@ impl Default for Config {
             replay_path: PathBuf::new(),
             screenshot_path: PathBuf::new(),
             osz_path: PathBuf::new(),
-            mirror_download_endpoint: "https://osu.direct/d".into(),
+            mirror_endpoint: "https://osu.direct".into(),
             database: DatabaseConfig::default(),
             redis: RedisConfig::default(),
             omajinai: OmajinaiConfig::default(),
@@ -143,8 +143,8 @@ impl Config {
         if let Ok(osz_path) = std::env::var("OSZ_PATH") {
             config.osz_path = PathBuf::from(osz_path);
         }
-        if let Ok(mirror_download_endpoint) = std::env::var("MIRROR_DOWNLOAD_ENDPOINT") {
-            config.mirror_download_endpoint = mirror_download_endpoint;
+        if let Ok(mirror_endpoint) = std::env::var("MIRROR_ENDPOINT") {
+            config.mirror_endpoint = mirror_endpoint;
         }
 
         if let Ok(db_host) = std::env::var("DATABASE_HOST") {
