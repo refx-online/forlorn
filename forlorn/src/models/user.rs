@@ -27,6 +27,10 @@ pub struct User {
 }
 
 impl User {
+    pub fn name(&self) -> String {
+        format!("<{} ({})>", self.name, self.id)
+    }
+
     pub fn preferred_metric(&self) -> &str {
         &self.preferred_metric
     }

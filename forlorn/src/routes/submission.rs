@@ -123,9 +123,8 @@ pub async fn submit_score(
     //       since they most likely spoofed `GameBase.ClientHash`.
     if submission.refx() && osu_path_md5 != REFX_CURRENT_CLIENT_HASH {
         tracing::warn!(
-            "<{} ({})> submitted a score in outdated/modified re;fx client! ({} != {})",
-            user.name,
-            user.id,
+            "{} submitted a score in outdated/modified re;fx client! ({} != {})",
+            user.name(),
             osu_path_md5,
             REFX_CURRENT_CLIENT_HASH,
         );
@@ -191,20 +190,18 @@ pub async fn submit_score(
 
     if submission.refx() && !validate_cheat_values(&score) {
         let webhook = Webhook::new(&state.config.webhook.debug).content(format!(
-            "[{}] <{} ({})> Overcheat? (malformed cheat value) [ac={}|tw={}|cs={}]",
+            "[{}] {} Overcheat? (malformed cheat value) [ac={}|tw={}|cs={}]",
             score.mode().as_str(),
-            user.name,
-            user.id,
+            user.name(),
             score.aim_correction_value,
             score.timewarp_value,
             score.uses_cs_changer
         ));
 
         tracing::warn!(
-            "[{}] <{} ({})> submitted a malformed cheat value [ac={}|tw={}|cs={}]",
+            "[{}] {} submitted a malformed cheat value [ac={}|tw={}|cs={}]",
             score.mode().as_str(),
-            user.name,
-            user.id,
+            user.name(),
             score.aim_correction_value,
             score.timewarp_value,
             score.uses_cs_changer
@@ -311,10 +308,9 @@ pub async fn submit_score(
             && beatmap.awards_ranked_pp()
         {
             tracing::warn!(
-                "[{}] <{} ({})> restricted for suspicious pp gain ({}pp > {}pp)",
+                "[{}] {} restricted for suspicious pp gain ({}pp > {}pp)",
                 score.mode().as_str(),
-                user.name,
-                user.id,
+                user.name(),
                 score.pp.round(),
                 threshold,
             );
@@ -441,7 +437,7 @@ pub async fn submit_score(
     tracing::info!(
         "[{}] {} submitted a score! ({}, {}pp | {}pp) in {}ms.",
         score.mode().as_str(),
-        user.name,
+        user.name(),
         score.status().as_str(),
         score.pp.round(),
         stats.pp,
