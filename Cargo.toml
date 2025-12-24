@@ -2,6 +2,7 @@
 members = [
     "forlorn",
     "webhook",
+    "storage",
 ]
 
 resolver = "2"

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use dashmap::{DashMap, DashSet};
+use storage::Storage;
 use tokio::sync::Mutex;
 
 use crate::{
@@ -9,7 +10,6 @@ use crate::{
         database::DbPoolManager,
         redis::{RedisConnectionManager, RedisPubsubManager},
     },
-    storage::Storage,
 };
 
 #[derive(Clone)]
