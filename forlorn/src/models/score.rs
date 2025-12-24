@@ -177,14 +177,18 @@ impl Score {
     }
 
     pub fn total_hits(&self) -> u32 {
-        let mut total_hits = self.n300 as u32 + self.n100 as u32 + self.n50 as u32;
+        let mut total_hits = self.n300 + self.n100;
 
-        if self.mode() == GameMode::VN_MANIA {
-            total_hits += self.ngeki as u32 + self.nkatu as u32;
-        } else if self.mode() == GameMode::VN_CATCH || self.mode() == GameMode::RX_CATCH {
-            total_hits += self.nkatu as u32;
+        if self.mode() != GameMode::VN_CATCH && self.mode() != GameMode::RX_CATCH {
+            total_hits += self.n50;
         }
 
-        total_hits
+        if self.mode().ngeki_nkatu() {
+            // taiko uses geki & katu for hitting big notes with 2 keys
+            // mania uses geki & katu for rainbow 300 & 200
+            total_hits += self.ngeki + self.nkatu;
+        }
+
+        total_hits as u32
     }
 }

@@ -62,6 +62,13 @@ impl GameMode {
         matches!(self, GameMode::CHEAT_OSU | GameMode::CHEAT_CHEAT_OSU)
     }
 
+    pub fn ngeki_nkatu(self) -> bool {
+        matches!(
+            self,
+            GameMode::VN_TAIKO | GameMode::RX_TAIKO | GameMode::VN_MANIA
+        )
+    }
+
     pub fn as_vanilla(self) -> i32 {
         self as i32 % 4
     }
