@@ -5,7 +5,7 @@ a service that handles everything /web/ related on refx. such as
 - replay serving
 - screenshots
 - rating
-- direct (wip)
+- direct
 - and other least essentials stuff
 
 ## don't tell me that name is from a song again
