@@ -88,7 +88,7 @@ pub async fn get_direct_search(
     State(state): State<AppState>,
     Query(direct): Query<GetDirectSearch>,
 ) -> impl IntoResponse {
-    let _user = match authenticate_user(&state, &direct.password_md5, &direct.username).await {
+    let user = match authenticate_user(&state, &direct.password_md5, &direct.username).await {
         Ok(user) => user,
         Err(resp) => return resp,
     };
@@ -180,6 +180,8 @@ pub async fn get_direct_search(
         ret.push(format_direct_set_info(&bmap, &diffs));
     }
 
+    tracing::info!("Served direct search for {} ({})", user.name(), ret.len());
+
     (StatusCode::OK, ret.join("\n").into_bytes()).into_response()
 }
 
@@ -187,7 +189,7 @@ pub async fn get_direct_search_set(
     State(state): State<AppState>,
     Query(direct): Query<GetDirectSearchSet>,
 ) -> impl IntoResponse {
-    let _user = match authenticate_user(&state, &direct.password_md5, &direct.username).await {
+    let user = match authenticate_user(&state, &direct.password_md5, &direct.username).await {
         Ok(user) => user,
         Err(resp) => return resp,
     };
@@ -229,6 +231,8 @@ pub async fn get_direct_search_set(
         bmapset.last_update.format("%Y-%m-%d %H:%M:%S"),
         bmapset.set_id
     );
+
+    tracing::info!("Served direct search set for {}", user.name());
 
     (StatusCode::OK, response.into_bytes()).into_response()
 }

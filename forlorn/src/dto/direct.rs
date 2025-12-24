@@ -11,6 +11,7 @@ pub struct GetDirectSearch {
     #[serde(rename = "r")]
     pub status: i32,
 
+    #[serde(rename = "q")]
     pub query: String,
 
     #[serde(rename = "m")]

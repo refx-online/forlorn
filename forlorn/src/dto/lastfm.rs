@@ -2,10 +2,10 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct GetLastFm {
-    #[serde(rename = "u")]
+    #[serde(rename = "us")]
     pub username: String,
 
-    #[serde(rename = "h")]
+    #[serde(rename = "ha")]
     pub password_md5: String,
 
     #[allow(unused)]
