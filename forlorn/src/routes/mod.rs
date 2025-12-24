@@ -32,7 +32,7 @@ pub fn create_routes() -> Router<AppState> {
         )
         .route(
             "/web/osu-screenshot.php",
-            get(screenshot::upload_screenshot),
+            post(screenshot::upload_screenshot),
         )
         .route(
             "/web/osu-getbeatmapinfo.php",
@@ -65,7 +65,7 @@ pub fn create_routes() -> Router<AppState> {
         )
         .route(
             "/web/refx-screenshot.php",
-            get(screenshot::upload_screenshot),
+            post(screenshot::upload_screenshot),
         )
         .route(
             "/web/refx-getbeatmapinfo.php",
@@ -91,9 +91,6 @@ pub fn create_routes() -> Router<AppState> {
         .route("/web/maps/{filename}", get(essentials::get_updated_beatmap))
         .route("/web/check-updates.php", get(essentials::get_check_updates))
         .route("/p/doyoureallywanttoaskpeppy", get(essentials::get_peppy))
-        .route(
-            "/ss/{screenshot_id}.{extension}",
-            get(screenshot::get_screenshot),
-        )
+        .route("/ss/{filename}", get(screenshot::get_screenshot))
         .route("/d/{mapset_id}", get(essentials::get_osz))
 }

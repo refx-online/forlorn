@@ -76,6 +76,7 @@ pub async fn calculate_pp(
             req.mods = mods.bits();
         }
 
+        // mode as vanilla
         req.mode %= 4;
 
         let resp = CLIENT.get(&url).query(&req).send().await?;

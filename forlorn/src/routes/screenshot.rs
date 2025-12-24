@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use axum::{
     body::Bytes,
     extract::{Multipart, Path, State},
-    http::{HeaderMap, StatusCode},
+    http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
 };
-use axum_extra::response::file_stream::FileStream;
 use md5::{Digest, Md5};
+use tokio::fs;
 
 use crate::{
     dto::screenshot::ScreenshotUpload, models::User, repository, state::AppState,
@@ -117,9 +117,13 @@ pub async fn upload_screenshot(
 
 pub async fn get_screenshot(
     State(state): State<AppState>,
-    Path((screenshot_id, extension)): Path<(String, String)>,
+    Path(filename): Path<String>,
 ) -> Response {
-    if !matches!(extension.as_str(), "jpg" | "jpeg" | "png") {
+    let Some((screenshot_id, extension)) = filename.rsplit_once('.') else {
+        return (StatusCode::BAD_REQUEST, "invalid filename").into_response();
+    };
+
+    if !matches!(extension, "jpg" | "jpeg" | "png") {
         return (StatusCode::BAD_REQUEST, "extension").into_response();
     }
 
@@ -130,8 +134,24 @@ pub async fn get_screenshot(
         return (StatusCode::NOT_FOUND, "not found").into_response();
     }
 
-    match FileStream::from_path(screenshot_path).await {
-        Ok(file) => file.into_response(),
+    let media_type = match extension {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        _ => "application/octet-stream",
+    };
+
+    match fs::read(&screenshot_path).await {
+        Ok(contents) => (
+            [
+                (header::CONTENT_TYPE, media_type),
+                (
+                    header::CONTENT_DISPOSITION,
+                    &format!("inline; filename=\"{}\"", file_name),
+                ),
+            ],
+            contents,
+        )
+            .into_response(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
 }
