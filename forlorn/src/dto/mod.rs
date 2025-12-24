@@ -1,5 +1,6 @@
 pub mod beatmap;
 pub mod channel;
+pub mod connection;
 pub mod direct;
 pub mod favourite;
 pub mod friends;

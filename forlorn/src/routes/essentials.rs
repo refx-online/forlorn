@@ -81,10 +81,6 @@ pub async fn get_osz(
     }
 }
 
-pub async fn get_bancho_connect() -> impl IntoResponse {
-    StatusCode::OK
-}
-
 // todo: implement this? and maybe move to assets-service
 pub async fn get_check_updates() -> impl IntoResponse {
     StatusCode::OK

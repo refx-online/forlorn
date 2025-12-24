@@ -1,6 +1,7 @@
 mod config;
 mod constants;
 mod dto;
+mod geoloc;
 mod infrastructure;
 mod models;
 mod repository;

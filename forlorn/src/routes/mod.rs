@@ -1,5 +1,6 @@
 pub mod beatmap;
 pub mod channel;
+pub mod connection;
 pub mod direct;
 pub mod essentials;
 pub mod favourite;
@@ -29,7 +30,7 @@ pub fn create_routes() -> Router<AppState> {
         )
         .route(
             "/web/bancho_osu_connect.php",
-            get(essentials::get_bancho_connect),
+            get(connection::get_bancho_connect),
         )
         .route(
             "/web/osu-screenshot.php",
@@ -62,7 +63,7 @@ pub fn create_routes() -> Router<AppState> {
         )
         .route(
             "/web/bancho_refx_connect.php",
-            get(essentials::get_bancho_connect),
+            get(connection::get_bancho_connect),
         )
         .route(
             "/web/refx-screenshot.php",

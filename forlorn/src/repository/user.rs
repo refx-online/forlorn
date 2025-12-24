@@ -86,6 +86,16 @@ pub async fn mark_conversation_as_read(db: &DbPoolManager, from_id: i32, to_id: 
     Ok(())
 }
 
+pub async fn update_country(db: &DbPoolManager, user_id: i32, country: &str) -> Result<()> {
+    sqlx::query("update users set country = ? where id = ?")
+        .bind(country)
+        .bind(user_id)
+        .execute(db.as_ref())
+        .await?;
+
+    Ok(())
+}
+
 pub async fn update_latest_activity(db: &DbPoolManager, user_id: i32) -> Result<()> {
     let time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
