@@ -20,6 +20,7 @@ use crate::state::AppState;
 
 pub fn create_routes() -> Router<AppState> {
     Router::new()
+        .route("/", get(essentials::get_root))
         .route("/health", get(health::health))
         // osu route
         .route(
@@ -93,4 +94,11 @@ pub fn create_routes() -> Router<AppState> {
         .route("/p/doyoureallywanttoaskpeppy", get(essentials::get_peppy))
         .route("/ss/{filename}", get(screenshot::get_screenshot))
         .route("/d/{mapset_id}", get(essentials::get_osz))
+        .route(
+            "/difficulty-rating",
+            post(essentials::post_difficulty_rating),
+        )
+        .route("/beatmaps/{map_id}", get(essentials::get_redirect_beatmap))
+        .route("/u/{user_id}", get(essentials::get_redirect_profile))
+        .route("/users/{user_id}", get(essentials::get_redirect_profile))
 }
