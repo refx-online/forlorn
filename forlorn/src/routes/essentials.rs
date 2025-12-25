@@ -34,7 +34,11 @@ async fn authenticate_user(
 }
 
 pub async fn get_peppy() -> impl IntoResponse {
-    StatusCode::OK
+    (
+        StatusCode::OK,
+        b"Hi, it's peppyDonald, you have now found an unused/useless route. Do you want a medal?",
+    )
+        .into_response()
 }
 
 pub async fn get_updated_beatmap(
