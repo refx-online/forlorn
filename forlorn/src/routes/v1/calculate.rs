@@ -18,15 +18,35 @@ pub async fn get_calculate_map(
     State(state): State<AppState>,
     Query(calculate): Query<GetCalculateMap>,
 ) -> (StatusCode, Json<Value>) {
-    if repository::user::fetch_by_api_key(&state.db, &calculate.api_key)
-        .await
-        .is_err()
-    {
+    let user = match repository::user::fetch_by_api_key(&state.db, &calculate.api_key).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!(
+                {
+                    "reason": "Your api key is revoked/doesn't exists.",
+                })),
+            );
+        },
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!(
+                {
+                    "reason": "Something wen't wrong!",
+                    "trace": e.to_string()
+                })),
+            );
+        },
+    };
+
+    if user.restricted() {
         return (
-            StatusCode::NOT_FOUND,
+            StatusCode::METHOD_NOT_ALLOWED,
             Json(json!(
             {
-                "reason": "Your api key is Revoked / Doesn't exists.",
+                "reason": "You're restricted!",
             })),
         );
     }
