@@ -380,7 +380,7 @@ pub async fn submit_score(
 
                 stats.rscore += additional_rscore as u64;
 
-                if (recalculate(&state.db, &mut stats).await).is_err() {
+                if score.pp > 0.0 && (recalculate(&state.db, &mut stats).await).is_err() {
                     return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
                 }
 
