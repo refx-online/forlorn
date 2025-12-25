@@ -152,19 +152,25 @@ pub async fn update_any_preexisting_personal_best(db: &DbPoolManager, score: &Sc
     let _ = repository::score::update_preexisting_personal_best(db, score).await;
 }
 
-pub async fn calculate_score_performance(
+#[allow(clippy::too_many_arguments)]
+pub async fn calculate_performance(
     config: &OmajinaiConfig,
-    score: &Score,
     beatmap_id: i32,
+    mode: i32,
+    mods: i32,
+    max_combo: i32,
+    accuracy: f32,
+    miss_count: i32,
+    legacy_score: i32,
 ) -> (f32, f32, f32) {
     let request = PerformanceRequest {
         beatmap_id,
-        mode: score.mode,
-        mods: score.mods,
-        max_combo: score.max_combo,
-        accuracy: score.acc,
-        miss_count: score.nmiss,
-        legacy_score: score.score,
+        mode,
+        mods,
+        max_combo,
+        accuracy,
+        miss_count,
+        legacy_score,
     };
 
     match calculate_pp(config, &[request]).await {

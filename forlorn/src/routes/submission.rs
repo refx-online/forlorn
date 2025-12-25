@@ -20,7 +20,7 @@ use crate::{
         beatmap::{ensure_local_osu_file, increment_playcount},
         password::verify_password,
         score::{
-            calculate_accuracy, calculate_placement, calculate_score_performance, calculate_status,
+            calculate_accuracy, calculate_performance, calculate_placement, calculate_status,
             calculate_xp, consume_cheat_values, decrypt_score_data, first_place_webhook,
             update_any_preexisting_personal_best, validate_cheat_values,
         },
@@ -224,8 +224,17 @@ pub async fn submit_score(
         )
         .await
         {
-            (score.pp, score.stars, score.hypothetical_pp) =
-                calculate_score_performance(&state.config.omajinai, &score, beatmap.id).await;
+            (score.pp, score.stars, score.hypothetical_pp) = calculate_performance(
+                &state.config.omajinai,
+                beatmap.id,
+                score.mode,
+                score.mods,
+                score.max_combo,
+                score.acc,
+                score.nmiss,
+                score.score,
+            )
+            .await;
 
             if score.passed {
                 if let Ok(Some(prev_best)) = calculate_status(&state.db, &mut score).await {

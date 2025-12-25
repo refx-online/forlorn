@@ -13,6 +13,10 @@ use crate::{
     models::{Beatmap, BeatmapSetInfo},
 };
 
+// this cache has:
+// map_id as key
+// map_md5 as key
+// TODO: separate this?
 pub static BEATMAP_CACHE: LazyLock<RwLock<HashMap<String, Beatmap>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
 
@@ -37,6 +41,21 @@ pub async fn fetch_by_md5(
     if let Some(b) = md5_from_api(config, db, md5).await? {
         let mut cache = BEATMAP_CACHE.write().await;
         cache.insert(md5.to_string(), b.clone());
+
+        return Ok(Some(b));
+    }
+
+    Ok(None)
+}
+
+pub async fn fetch_by_id(db: &DbPoolManager, id: &i32) -> Result<Option<Beatmap>> {
+    if let Some(b) = id_from_cache(id).await {
+        return Ok(Some(b));
+    }
+
+    if let Some(b) = id_from_database(db, id).await? {
+        let mut cache = BEATMAP_CACHE.write().await;
+        cache.insert(id.to_string(), b.clone());
 
         return Ok(Some(b));
     }
@@ -109,7 +128,8 @@ async fn md5_from_api(config: &Config, db: &DbPoolManager, md5: &str) -> Result<
     let resp = match api_get_beatmaps(config, Some(md5), None).await? {
         Some(r) if !r.is_empty() => r,
         _ => {
-            // API returned 404, map deleted
+            // API returned 404, map deleted.
+            // we can safe to assume that the map is deleted, we should delete them in db.
             let set_id_opt: Option<i32> =
                 sqlx::query_scalar("select set_id from maps where md5 = ?")
                     .bind(md5)
@@ -336,6 +356,30 @@ pub async fn fetch_set_by_md5(db: &DbPoolManager, md5: &String) -> Result<Option
     .await?;
 
     Ok(result)
+}
+
+pub async fn id_from_cache(id: &i32) -> Option<Beatmap> {
+    let cache = BEATMAP_CACHE.read().await;
+
+    cache.get(&id.to_string()).cloned()
+}
+
+pub async fn id_from_database(db: &DbPoolManager, map_id: &i32) -> Result<Option<Beatmap>> {
+    let beatmap = sqlx::query_as::<_, Beatmap>(
+        "select id, set_id, status, md5, artist, title, version, creator, filename, \
+            last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff \
+         from maps where id = ?"
+    )
+    .bind(map_id)
+    .fetch_optional(db.as_ref())
+    .await?;
+
+    let beatmap = match beatmap {
+        Some(b) => b,
+        None => return Ok(None),
+    };
+
+    Ok(Some(beatmap))
 }
 
 async fn save(db: &DbPoolManager, beatmaps: &[Beatmap]) -> Result<()> {
