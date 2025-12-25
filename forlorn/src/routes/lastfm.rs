@@ -51,6 +51,8 @@ pub async fn get_lastfm(
 
     // would be funny if someone still has hq!osu
     if flags.contains(LastFmFlags::HQ_ASSEMBLY) || flags.contains(LastFmFlags::HQ_FILE) {
+        let _ = state.metrics.incr("lastfm.hqosu_flagged", ["status:ok"]);
+
         tokio::spawn(async move {
             let _ = restrict::restrict(
                 &state.redis,
@@ -66,6 +68,10 @@ pub async fn get_lastfm(
     // or some weak edits using `Harmony` or `Cheat Engine`
     // yet, it's still punishable. since they are modifying the client.
     if flags.contains(LastFmFlags::INVALID_CHEAT_VALUES) {
+        let _ = state
+            .metrics
+            .incr("lastfm.invalid_cheat_values", ["status:ok"]);
+
         tokio::spawn(async move {
             let _ = restrict::restrict(
                 &state.redis,

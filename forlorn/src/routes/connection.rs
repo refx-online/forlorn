@@ -46,6 +46,8 @@ pub async fn get_bancho_connect(
     // but we can at least fix the country code for users with "xx" country.
 
     if let Some(geoloc) = fetch_geoloc(&headers).await {
+        let _ = state.metrics.incr("user.fixed_country", ["status:ok"]);
+
         match repository::user::update_country(&state.db, user.id, &geoloc.country_code).await {
             Ok(_) => {
                 tracing::info!(
