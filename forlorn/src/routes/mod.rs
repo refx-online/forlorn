@@ -20,9 +20,14 @@ use axum::{
 
 use crate::state::AppState;
 
+/// Unhandled routes:
+/// - /web/osu-comment.php - i fucking hate this
+/// - /web/osu-session.php - only for profiling and logging purposes, i don't think
+///                          i should implement this?
+/// - /users/ - no
+/// - every beatmap submission related - i will separate it
 pub fn create_routes() -> Router<AppState> {
     Router::new()
-        .route("/", get(essentials::get_root))
         .nest("/api/v1", v1::create_routes())
         // osu route
         .route(

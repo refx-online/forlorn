@@ -1,4 +1,7 @@
-# forlorn
+<p align="center">
+  <img src="https://assets.ppy.sh/beatmaps/2416181/covers/cover.jpg">
+</p>
+
 a service that handles everything /web/ related on refx. such as
 - score submission
 - ingame leaderboard
@@ -6,6 +9,8 @@ a service that handles everything /web/ related on refx. such as
 - screenshots
 - rating
 - direct
+- error
+- mark as read
 - and other least essentials stuff
 
 ## don't tell me that name is from a song again

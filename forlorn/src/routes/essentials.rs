@@ -1,5 +1,3 @@
-//use std::time::{SystemTime, UNIX_EPOCH};
-
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -111,32 +109,6 @@ pub async fn get_friends(
         .join("\n");
 
     (StatusCode::OK, friend).into_response()
-}
-
-pub async fn get_root() -> impl IntoResponse {
-    /*
-    // yes, isui covers are peak
-    let banger_songs = [
-        "https://www.youtube.com/watch?v=_tYbmNb4VVQ",
-        "https://www.youtube.com/watch?v=4QDG2BWxLdE",
-        "https://www.youtube.com/watch?v=qlI-HrohYtQ",
-        "https://www.youtube.com/watch?v=8GeB7xZqJ48",
-        "https://www.youtube.com/watch?v=ML_SkKyZLbA",
-        "https://www.youtube.com/watch?v=U09UQ4TXNEQ",
-        "https://youtu.be/766qmHTc2ro?si=Pjiq8VIjV22AJtdG",
-    ];
-
-    // HACK: use system time as "random"
-    let i = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .subsec_nanos() as usize
-        % banger_songs.len();
-
-    Redirect::permanent(banger_songs[i]).into_response()
-    */
-
-    Redirect::permanent("https://remeliah.cyou").into_response()
 }
 
 // redirects -> frontend or other
