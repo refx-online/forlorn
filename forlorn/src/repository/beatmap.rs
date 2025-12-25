@@ -33,6 +33,7 @@ pub async fn fetch_by_md5(
 
     if let Some(b) = md5_from_database(db, md5).await? {
         let mut cache = BEATMAP_CACHE.write().await;
+        cache.insert(b.id.to_string(), b.clone());
         cache.insert(md5.to_string(), b.clone());
 
         return Ok(Some(b));
@@ -40,6 +41,7 @@ pub async fn fetch_by_md5(
 
     if let Some(b) = md5_from_api(config, db, md5).await? {
         let mut cache = BEATMAP_CACHE.write().await;
+        cache.insert(b.id.to_string(), b.clone());
         cache.insert(md5.to_string(), b.clone());
 
         return Ok(Some(b));
@@ -48,7 +50,7 @@ pub async fn fetch_by_md5(
     Ok(None)
 }
 
-pub async fn fetch_by_id(db: &DbPoolManager, id: &i32) -> Result<Option<Beatmap>> {
+pub async fn fetch_by_id(config: &Config, db: &DbPoolManager, id: &i32) -> Result<Option<Beatmap>> {
     if let Some(b) = id_from_cache(id).await {
         return Ok(Some(b));
     }
@@ -56,6 +58,15 @@ pub async fn fetch_by_id(db: &DbPoolManager, id: &i32) -> Result<Option<Beatmap>
     if let Some(b) = id_from_database(db, id).await? {
         let mut cache = BEATMAP_CACHE.write().await;
         cache.insert(id.to_string(), b.clone());
+        cache.insert(b.md5.clone(), b.clone());
+
+        return Ok(Some(b));
+    }
+
+    if let Some(b) = id_from_api(config, db, id).await? {
+        let mut cache = BEATMAP_CACHE.write().await;
+        cache.insert(id.to_string(), b.clone());
+        cache.insert(b.md5.clone(), b.clone());
 
         return Ok(Some(b));
     }
@@ -116,6 +127,7 @@ pub async fn md5_from_database(db: &DbPoolManager, md5: &str) -> Result<Option<B
     let mut cache = BEATMAP_CACHE.write().await;
     for b in set {
         // might as well cache them all
+        cache.insert(b.id.to_string(), b.clone());
         cache.insert(b.md5.clone(), b);
     }
 
@@ -125,7 +137,7 @@ pub async fn md5_from_database(db: &DbPoolManager, md5: &str) -> Result<Option<B
 }
 
 async fn md5_from_api(config: &Config, db: &DbPoolManager, md5: &str) -> Result<Option<Beatmap>> {
-    let resp = match api_get_beatmaps(config, Some(md5), None).await? {
+    let resp = match api_get_beatmaps(config, Some(md5), None, None).await? {
         Some(r) if !r.is_empty() => r,
         _ => {
             // API returned 404, map deleted.
@@ -169,7 +181,7 @@ async fn md5_from_api(config: &Config, db: &DbPoolManager, md5: &str) -> Result<
 
     let set_id: i32 = resp[0].set_id.parse().unwrap_or(0);
 
-    let set_resp = match api_get_beatmaps(config, None, Some(&set_id)).await? {
+    let set_resp = match api_get_beatmaps(config, None, Some(&set_id), None).await? {
         Some(r) if !r.is_empty() => r,
         _ => return Ok(None),
     };
@@ -379,7 +391,121 @@ pub async fn id_from_database(db: &DbPoolManager, map_id: &i32) -> Result<Option
         None => return Ok(None),
     };
 
+    // we wont let our "private" maps to touch osu api for obvious reason
+    // todo: use server?
+    if beatmap.set_id >= PRIVATE_INITIAL_SET_ID {
+        return Ok(Some(beatmap));
+    }
+
+    let set: Vec<Beatmap> = sqlx::query_as::<_, Beatmap>(
+        "select id, set_id, status, md5, artist, title, version, creator, filename, \
+            last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff \
+         from maps where set_id = ?"
+    )
+    .bind(beatmap.set_id)
+    .fetch_all(db.as_ref())
+    .await?;
+
+    let last: Option<DateTime<Utc>> = sqlx::query_scalar(
+        "select last_osuapi_check from mapsets where id = ? and server = 'osu!'",
+    )
+    .bind(beatmap.set_id)
+    .fetch_optional(db.as_ref())
+    .await?;
+
+    if should_update_mapset(&set, last).await {
+        let mut cache = BEATMAP_CACHE.write().await;
+        cache.retain(|_, b| b.set_id != beatmap.set_id);
+
+        return Ok(None); // we force refetch from api
+    }
+
+    let mut cache = BEATMAP_CACHE.write().await;
+    for b in set {
+        // might as well cache them all
+        cache.insert(b.id.to_string(), b.clone());
+        cache.insert(b.md5.clone(), b);
+    }
+
+    drop(cache);
+
     Ok(Some(beatmap))
+}
+
+async fn id_from_api(config: &Config, db: &DbPoolManager, map_id: &i32) -> Result<Option<Beatmap>> {
+    let resp = match api_get_beatmaps(config, None, None, Some(map_id)).await? {
+        Some(r) if !r.is_empty() => r,
+        _ => {
+            // API returned 404, map deleted.
+            // we can safe to assume that the map is deleted, we should delete them in db.
+            let set_id_opt: Option<i32> =
+                sqlx::query_scalar("select set_id from maps where id = ?")
+                    .bind(map_id)
+                    .fetch_optional(db.as_ref())
+                    .await?;
+
+            if let Some(set_id) = set_id_opt {
+                sqlx::query("delete from scores where id = ?")
+                    .bind(map_id)
+                    .execute(db.as_ref())
+                    .await?;
+
+                sqlx::query("delete from maps where id = ?")
+                    .bind(map_id)
+                    .execute(db.as_ref())
+                    .await?;
+
+                let remaining: i64 =
+                    sqlx::query_scalar("select count(*) from maps where set_id = ?")
+                        .bind(set_id)
+                        .fetch_one(db.as_ref())
+                        .await?;
+
+                if remaining == 0 {
+                    sqlx::query("delete from mapsets where id = ?")
+                        .bind(set_id)
+                        .execute(db.as_ref())
+                        .await?;
+                }
+
+                let mut cache = BEATMAP_CACHE.write().await;
+                cache.remove(&map_id.to_string());
+            }
+
+            return Ok(None);
+        },
+    };
+
+    let map_data = &resp[0];
+    let set_id: i32 = map_data.set_id.parse().unwrap_or(0);
+
+    // XXX: only for consistency
+    let set_resp = match api_get_beatmaps(config, None, Some(&set_id), None).await? {
+        Some(r) if !r.is_empty() => r,
+        _ => return Ok(None),
+    };
+
+    let mut to_save = Vec::new();
+    for beatmap in &set_resp {
+        let mut new_map = parse_beatmap_from_api(beatmap.clone(), config.osu.api_key.is_empty());
+
+        new_map.frozen = false;
+        new_map.plays = 0;
+        new_map.passes = 0;
+
+        to_save.push(new_map);
+    }
+
+    save(db, &to_save).await?;
+
+    sqlx::query("replace into mapsets (id, server, last_osuapi_check) values (?, ?, ?)")
+        .bind(set_id)
+        .bind("osu!")
+        .bind(Utc::now())
+        .execute(db.as_ref())
+        .await?;
+
+    Ok(to_save.into_iter().find(|b| b.id == *map_id))
 }
 
 async fn save(db: &DbPoolManager, beatmaps: &[Beatmap]) -> Result<()> {

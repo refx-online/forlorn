@@ -58,18 +58,19 @@ pub async fn get_calculate_map(
     let legacy_score = calculate.legacy_score.unwrap_or(0);
     let miss_count = calculate.misses.unwrap_or(0);
 
-    let beatmap = match repository::beatmap::fetch_by_id(&state.db, &calculate.map_id).await {
-        Ok(Some(beatmap)) => beatmap,
-        _ => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(json!(
-                {
-                    "reason": "Beatmap doesn't exists.",
-                })),
-            );
-        },
-    };
+    let beatmap =
+        match repository::beatmap::fetch_by_id(&state.config, &state.db, &calculate.map_id).await {
+            Ok(Some(beatmap)) => beatmap,
+            _ => {
+                return (
+                    StatusCode::NOT_FOUND,
+                    Json(json!(
+                    {
+                        "reason": "Beatmap doesn't exists.",
+                    })),
+                );
+            },
+        };
 
     let beatmap_info = json!({
         "id": beatmap.id,

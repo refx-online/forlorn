@@ -23,6 +23,7 @@ pub async fn api_get_beatmaps(
     config: &Config,
     h: Option<&str>,
     s: Option<&i32>,
+    b: Option<&i32>,
 ) -> Result<Option<Vec<BeatmapApiResponse>>> {
     let mut params = vec![];
     let url = if config.osu.api_key.is_empty() {
@@ -39,6 +40,10 @@ pub async fn api_get_beatmaps(
 
     if let Some(set_id) = s {
         params.push(("s", set_id.to_string()));
+    }
+
+    if let Some(map_id) = b {
+        params.push(("b", map_id.to_string()));
     }
 
     let response = CLIENT.get(url).query(&params).send().await?;
