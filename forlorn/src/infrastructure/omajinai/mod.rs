@@ -58,10 +58,11 @@ pub async fn calculate_pp(
 ) -> Result<PerformanceResult> {
     let url = format!("{}/calculate", config.base_url);
 
-    let mut req = requests.clone();
-    let mut mods = Mods::from_bits_truncate(req.mods);
+    let mut performance_request = requests.clone();
+    let mut mods = Mods::from_bits_truncate(performance_request.mods);
 
-    if (req.mode == GameMode::CHEAT_OSU.as_i32() || req.mode == GameMode::CHEAT_CHEAT_OSU.as_i32())
+    if (performance_request.mode == GameMode::CHEAT_OSU.as_i32()
+        || performance_request.mode == GameMode::CHEAT_CHEAT_OSU.as_i32())
         && mods.contains(Mods::RELAX)
     {
         // NOTE: on the client, it has 2 relaxes. relax mod and relax "cheat".
@@ -69,13 +70,13 @@ pub async fn calculate_pp(
         //       and because its a cheating stuff, and we know how the people that plays it reeaallly wants
         mods.remove(Mods::RELAX);
 
-        req.mods = mods.bits();
+        performance_request.mods = mods.bits();
     }
 
     // mode as vanilla
-    req.mode %= 4;
+    performance_request.mode %= 4;
 
-    let resp = CLIENT.get(&url).query(&req).send().await?;
+    let resp = CLIENT.get(&url).query(&performance_request).send().await?;
 
     let p: Wrapper = resp.json().await?;
 
