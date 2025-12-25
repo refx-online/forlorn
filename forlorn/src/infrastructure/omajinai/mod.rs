@@ -54,37 +54,30 @@ struct Wrapper {
 
 pub async fn calculate_pp(
     config: &OmajinaiConfig,
-    perf_requests: &[PerformanceRequest],
-) -> Result<Vec<PerformanceResult>> {
+    requests: &PerformanceRequest,
+) -> Result<PerformanceResult> {
     let url = format!("{}/calculate", config.base_url);
 
-    let mut out = Vec::with_capacity(perf_requests.len());
+    let mut req = requests.clone();
+    let mut mods = Mods::from_bits_truncate(req.mods);
 
-    for req in perf_requests {
-        let mut req = req.clone();
-        let mut mods = Mods::from_bits_truncate(req.mods);
+    if (req.mode == GameMode::CHEAT_OSU.as_i32() || req.mode == GameMode::CHEAT_CHEAT_OSU.as_i32())
+        && mods.contains(Mods::RELAX)
+    {
+        // NOTE: on the client, it has 2 relaxes. relax mod and relax "cheat".
+        //       we should not calculate relax mods on that client because its nerf was deemed "too harsh"
+        //       and because its a cheating stuff, and we know how the people that plays it reeaallly wants
+        mods.remove(Mods::RELAX);
 
-        if (req.mode == GameMode::CHEAT_OSU.as_i32()
-            || req.mode == GameMode::CHEAT_CHEAT_OSU.as_i32())
-            && mods.contains(Mods::RELAX)
-        {
-            // NOTE: on the client, it has 2 relaxes. relax mod and relax "cheat".
-            //       we should not calculate relax mods on that client because its nerf was deemed "too harsh"
-            //       and because its a cheating stuff, and we know how the people that plays it reeaallly wants
-            mods.remove(Mods::RELAX);
-
-            req.mods = mods.bits();
-        }
-
-        // mode as vanilla
-        req.mode %= 4;
-
-        let resp = CLIENT.get(&url).query(&req).send().await?;
-
-        let p: Wrapper = resp.json().await?;
-
-        out.push(p.data);
+        req.mods = mods.bits();
     }
 
-    Ok(out)
+    // mode as vanilla
+    req.mode %= 4;
+
+    let resp = CLIENT.get(&url).query(&req).send().await?;
+
+    let p: Wrapper = resp.json().await?;
+
+    Ok(p.data)
 }

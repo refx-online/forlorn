@@ -173,12 +173,8 @@ pub async fn calculate_performance(
         legacy_score,
     };
 
-    match calculate_pp(config, &[request]).await {
-        Ok(mut results) => {
-            let result = results.pop().unwrap_or_default();
-
-            (result.pp, result.stars, result.hypothetical_pp)
-        },
+    match calculate_pp(config, &request).await {
+        Ok(result) => (result.pp, result.stars, result.hypothetical_pp),
         Err(_) => (0.0, 0.0, 0.0), // TODO: raise for error instead setting to 0? but it will broke submission..
     }
 }
