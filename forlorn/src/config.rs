@@ -12,6 +12,7 @@ pub struct Config {
     pub mirror_endpoint: String,
     pub database: DatabaseConfig,
     pub redis: RedisConfig,
+    pub datadog: DatadogConfig,
     pub omajinai: OmajinaiConfig,
     pub webhook: DiscordWebhookConfig,
     pub osu: OsuConfig,
@@ -34,6 +35,13 @@ pub struct RedisConfig {
     pub port: u16,
     pub password: Option<String>,
     pub db: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DatadogConfig {
+    pub host: String,
+    pub port: u16,
+    pub namespace: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -70,6 +78,7 @@ impl Default for Config {
             mirror_endpoint: "https://osu.direct".into(),
             database: DatabaseConfig::default(),
             redis: RedisConfig::default(),
+            datadog: DatadogConfig::default(),
             omajinai: OmajinaiConfig::default(),
             webhook: DiscordWebhookConfig::default(),
             osu: OsuConfig::default(),
@@ -98,6 +107,16 @@ impl Default for RedisConfig {
             port: 6379,
             password: None,
             db: 0,
+        }
+    }
+}
+
+impl Default for DatadogConfig {
+    fn default() -> Self {
+        Self {
+            host: "127.0.0.1".into(),
+            port: 8125,
+            namespace: "refx".into(),
         }
     }
 }
@@ -180,6 +199,16 @@ impl Config {
         }
         if let Ok(redis_db) = std::env::var("REDIS_DB") {
             config.redis.db = redis_db.parse()?;
+        }
+
+        if let Ok(datadog_host) = std::env::var("DATADOG_HOST") {
+            config.datadog.host = datadog_host;
+        }
+        if let Ok(datadog_port) = std::env::var("DATADOG_PORT") {
+            config.datadog.port = datadog_port.parse()?;
+        }
+        if let Ok(datadog_namespace) = std::env::var("DATADOG_NAMESPACE") {
+            config.datadog.namespace = datadog_namespace;
         }
 
         if let Ok(omajinai_url) = std::env::var("OMAJINAI_BASE_URL") {

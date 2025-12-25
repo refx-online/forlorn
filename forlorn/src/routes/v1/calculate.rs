@@ -111,6 +111,8 @@ pub async fn get_calculate_map(
         );
     }
 
+    let _ = state.metrics.incr("pp_calculated", ["status:ok"]);
+
     // XXX: if they didn't put accuracy, we can just use `COMMON_ACCURACY`
     if calculate.accuracy.is_none() {
         let mut pp_results = Vec::new();

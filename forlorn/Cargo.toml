@@ -18,6 +18,8 @@ tokio-stream = "0.1.17"
 redis = { version = "0.32.5", features = ["aio", "tokio-comp"] }
 rslock = { version = "~0.7.2", features = ["tokio-comp"] }
 
+dogstatsd = "0.12.1"
+
 base64 = "0.22.1"
 simple-rijndael = { git = "https://github.com/Pure-Peace/simple-rijndael", rev = "901d7ef30f51867cbd26903c4170ee1425accb36" }
 md-5 = "0.10.6"

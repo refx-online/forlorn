@@ -61,6 +61,12 @@ pub async fn get_replay(
 
     let done = now.elapsed();
 
+    let _ = state.metrics.timing(
+        "replay_served_elapsed",
+        done.as_millis() as i64,
+        ["status:all"],
+    );
+
     tracing::info!("Replay served to {} in {}ms.", user.name, done.as_millis());
 
     match FileStream::from_path(file).await {

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use dashmap::DashSet;
+use dogstatsd::Client as DatadogClient;
 use rslock::LockManager;
 use storage::Storage;
 
@@ -20,6 +21,7 @@ pub struct AppState {
     pub redis: RedisConnectionManager,
     pub subscriber: RedisPubsubManager,
     pub score_locks: LockManager,
+    pub metrics: Arc<DatadogClient>,
     pub unsubmitted_maps: Arc<DashSet<String>>,
     pub needs_update_maps: Arc<DashSet<String>>,
 }
@@ -32,6 +34,7 @@ impl AppState {
         redis: RedisConnectionManager,
         subscriber: RedisPubsubManager,
         score_locks: LockManager,
+        metrics: Arc<DatadogClient>,
     ) -> Self {
         Self {
             config,
@@ -40,6 +43,7 @@ impl AppState {
             redis,
             subscriber,
             score_locks,
+            metrics,
             unsubmitted_maps: Arc::new(DashSet::new()),
             needs_update_maps: Arc::new(DashSet::new()),
         }

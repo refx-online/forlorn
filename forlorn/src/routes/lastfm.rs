@@ -100,6 +100,10 @@ pub async fn get_lastfm(
         explanations
     );
 
+    let _ = state
+        .metrics
+        .incr("lastfm_flagged", [format!("flag:{raw}")]);
+
     tokio::spawn(async move {
         let _ = webhook.post().await;
     });

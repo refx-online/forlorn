@@ -15,7 +15,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use config::Config;
 use dotenvy::dotenv;
-use infrastructure::{database, redis, redis::subscriber::SubscriberHandler};
+use infrastructure::{SubscriberHandler, database, datadog, redis};
 use routes::create_routes;
 use state::AppState;
 use storage::Storage;
@@ -33,6 +33,7 @@ async fn main() -> Result<()> {
     let db_pool = database::create_pool(&config.database).await?;
     let (redis_conn, subscriber_conn, score_locks) =
         redis::create_connection(&config.redis).await?;
+    let metrics = Arc::new(datadog::create_metric(config.datadog.clone()));
 
     let storage = Storage::new(
         config.omajinai.beatmap_path.clone(),
@@ -48,6 +49,7 @@ async fn main() -> Result<()> {
         redis_conn,
         subscriber_conn,
         score_locks,
+        metrics,
     );
 
     let subscriber = SubscriberHandler::new(state.clone());

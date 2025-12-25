@@ -180,6 +180,8 @@ pub async fn get_direct_search(
         ret.push(format_direct_set_info(&bmap, &diffs));
     }
 
+    let _ = state.metrics.incr("direct_served", ["status:ok"]);
+
     tracing::info!("Served direct search for {} ({})", user.name(), ret.len());
 
     (StatusCode::OK, ret.join("\n").into_bytes()).into_response()
@@ -231,6 +233,8 @@ pub async fn get_direct_search_set(
         bmapset.last_update.format("%Y-%m-%d %H:%M:%S"),
         bmapset.set_id
     );
+
+    let _ = state.metrics.incr("direct_set_served", ["status:ok"]);
 
     tracing::info!("Served direct search set for {}", user.name());
 

@@ -63,6 +63,8 @@ pub async fn get_error(
         client_error.stacktrace
     );
 
+    let _ = state.metrics.incr("error_experienced", ["status:ok"]);
+
     if let Some(screenshot_data) = client_error.screenshot_data.take() {
         let ext = if screenshot_data.len() > 10
             && (&screenshot_data[6..10] == b"JFIF" || &screenshot_data[6..10] == b"Exif")
