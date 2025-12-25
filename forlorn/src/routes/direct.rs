@@ -234,7 +234,7 @@ pub async fn get_direct_search_set(
         bmapset.set_id
     );
 
-    let _ = state.metrics.incr("direct_set_served", ["status:ok"]);
+    let _ = state.metrics.incr("direct.set_served", ["status:ok"]);
 
     tracing::info!("Served direct search set for {}", user.name());
 

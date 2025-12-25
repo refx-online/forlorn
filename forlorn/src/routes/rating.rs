@@ -40,7 +40,7 @@ pub async fn get_rating(
         // client is submitting a rating for the map
         let _ = repository::rating::insert(&state.db, &rating.map_md5, user.id, rate).await;
 
-        let _ = state.metrics.incr("rating_submitted", ["status:ok"]);
+        let _ = state.metrics.incr("rating.submitted", ["status:ok"]);
     } else {
         let beatmap = match repository::beatmap::fetch_by_md5(
             &state.config,

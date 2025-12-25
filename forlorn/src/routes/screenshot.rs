@@ -110,7 +110,7 @@ pub async fn upload_screenshot(
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 
-    let _ = state.metrics.incr("screenshot_uploaded", ["status:ok"]);
+    let _ = state.metrics.incr("screenshot.uploaded", ["status:ok"]);
 
     tracing::info!("{} uploaded {}", user.name, file_name);
 

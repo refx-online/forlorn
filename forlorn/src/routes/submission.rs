@@ -126,7 +126,7 @@ pub async fn submit_score(
     if submission.refx() && osu_path_md5 != REFX_CURRENT_CLIENT_HASH {
         let _ = state
             .metrics
-            .incr("score_client_hash_flagged", ["status:ok"]);
+            .incr("score.client_hash_flagged", ["status:ok"]);
 
         tracing::warn!(
             "{} submitted a score in outdated/modified re;fx client! ({} != {})",
@@ -174,7 +174,7 @@ pub async fn submit_score(
     if submission.refx() && !validate_cheat_values(&score) {
         let _ = state
             .metrics
-            .incr("score_invalid_cheat_values", ["status:ok"]);
+            .incr("score.invalid_cheat_values", ["status:ok"]);
 
         let webhook = Webhook::new(&state.config.webhook.debug).content(format!(
             "[{}] {} Overcheat? (malformed cheat value) [ac={}|tw={}|cs={}]",
@@ -241,7 +241,7 @@ pub async fn submit_score(
         if let Ok(Some(_)) =
             repository::score::fetch_by_online_checksum(&state.db, &score.online_checksum).await
         {
-            let _ = state.metrics.incr("score_duplicate", ["status:ok"]);
+            let _ = state.metrics.incr("score.duplicate", ["status:ok"]);
 
             tracing::warn!(
                 "duplicate score submission detected for user: {}",
@@ -283,10 +283,10 @@ pub async fn submit_score(
 
         score.xp = calculate_xp(&score, &beatmap);
 
-        let _ = state.metrics.incr("score_submitted", ["status:all"]);
+        let _ = state.metrics.incr("score.submitted", ["status:all"]);
 
         if score.status == SubmissionStatus::Best.as_i32() {
-            let _ = state.metrics.incr("score_submitted", ["status:best"]);
+            let _ = state.metrics.incr("score.submitted", ["status:best"]);
 
             if beatmap.has_leaderboard() && score.rank == 1 && !user.restricted() {
                 let prev_holder = repository::user::fetch_prev_n1(&state.db, &score)
@@ -349,7 +349,7 @@ pub async fn submit_score(
             {
                 let _ = state
                     .metrics
-                    .incr("score_exceeds_pp_cap_threshold", ["status:ok"]);
+                    .incr("score.exceeds_pp_cap_threshold", ["status:ok"]);
 
                 tracing::warn!(
                     "[{}] {} restricted for suspicious pp gain ({}pp > {}pp)",

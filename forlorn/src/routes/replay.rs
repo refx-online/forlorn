@@ -62,7 +62,7 @@ pub async fn get_replay(
     let done = now.elapsed();
 
     let _ = state.metrics.timing(
-        "replay_served_elapsed",
+        "replay.served_elapsed",
         done.as_millis() as i64,
         ["status:all"],
     );

@@ -77,7 +77,7 @@ pub async fn get_scores(
     if leaderboard.leaderboard_version < 3 {
         let _ = state
             .metrics
-            .incr("leaderboard_outdated_version", ["status:ok"]);
+            .incr("leaderboard.outdated_version", ["status:ok"]);
 
         tracing::warn!(
             "outdated leaderboard version {} from user: {}",
@@ -118,7 +118,7 @@ pub async fn get_scores(
             Err(_) => return (StatusCode::OK, b"error: db").into_response(),
         };
 
-    let _ = state.metrics.incr("leaderboard_served", ["status:ok"]);
+    let _ = state.metrics.incr("leaderboard.served", ["status:ok"]);
 
     if beatmap.status < RankedStatus::Ranked.as_i32() {
         return (
