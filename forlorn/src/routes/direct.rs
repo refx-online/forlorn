@@ -180,7 +180,7 @@ pub async fn get_direct_search(
         ret.push(format_direct_set_info(&bmap, &diffs));
     }
 
-    let _ = state.metrics.incr("direct_served", ["status:ok"]);
+    let _ = state.metrics.incr("direct.served", ["status:ok"]);
 
     tracing::info!("Served direct search for {} ({})", user.name(), ret.len());
 
