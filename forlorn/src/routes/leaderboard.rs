@@ -74,6 +74,16 @@ pub async fn get_scores(
         // restrict? but no one uses aqn tho..
     }
 
+    if leaderboard.leaderboard_version < 3 {
+        tracing::warn!(
+            "outdated leaderboard version {} from user: {}",
+            leaderboard.leaderboard_version,
+            leaderboard.username
+        );
+
+        return (StatusCode::OK, b"error: version").into_response();
+    }
+
     let now = Instant::now();
 
     if state.unsubmitted_maps.contains(&leaderboard.map_md5) {
