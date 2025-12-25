@@ -438,15 +438,15 @@ async fn id_from_api(config: &Config, db: &DbPoolManager, map_id: &i32) -> Resul
         _ => {
             // API returned 404, map deleted.
             // we can safe to assume that the map is deleted, we should delete them in db.
-            let set_id_opt: Option<i32> =
-                sqlx::query_scalar("select set_id from maps where id = ?")
+            let set_id_opt: Option<(i32, String)> =
+                sqlx::query_as("select set_id, map_md5 from maps where id = ?")
                     .bind(map_id)
                     .fetch_optional(db.as_ref())
                     .await?;
 
-            if let Some(set_id) = set_id_opt {
-                sqlx::query("delete from scores where id = ?")
-                    .bind(map_id)
+            if let Some((set_id, map_md5)) = set_id_opt {
+                sqlx::query("delete from scores where map_md5 = ?")
+                    .bind(map_md5)
                     .execute(db.as_ref())
                     .await?;
 
