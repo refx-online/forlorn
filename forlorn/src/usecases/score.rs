@@ -228,7 +228,7 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
     let status_weight = match score.status() {
         SubmissionStatus::Best => 50.0,
         SubmissionStatus::Submitted => 20.0,
-        SubmissionStatus::Failed => 0.0,
+        _ => 0.0,
     };
 
     let mut xp = 0.0;

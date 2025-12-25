@@ -64,6 +64,8 @@ pub struct Score {
     pub stars: f32,
     #[sqlx(skip)]
     pub passed: bool,
+    #[sqlx(skip)]
+    pub quit: bool,
 }
 
 impl Score {
@@ -116,6 +118,7 @@ impl Score {
             rank: 0,
             hypothetical_pp: 0.0,
             stars: 0.0,
+            quit: false,
         })
     }
 

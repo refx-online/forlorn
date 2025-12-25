@@ -156,6 +156,7 @@ pub async fn submit_score(
 
     score.mode = score.mode().as_i32();
     score.acc = calculate_accuracy(&score);
+    score.quit = submission.exited_out();
     consume_cheat_values(&mut score, &submission);
 
     // always update last activity no matter what
@@ -261,6 +262,8 @@ pub async fn submit_score(
             if beatmap.status != RankedStatus::Pending.as_i32() {
                 score.rank = calculate_placement(&state.db, &score).await;
             }
+        } else if score.quit {
+            score.status = SubmissionStatus::Quit.as_i32();
         } else {
             score.status = SubmissionStatus::Failed.as_i32();
         }
