@@ -6,8 +6,8 @@ use axum::{
 use webhook::Webhook;
 
 use crate::{
-    constants::LastFmFlags, dto::lastfm::GetLastFm, models::User, repository, state::AppState,
-    usecases::password::verify_password,
+    constants::LastFmFlags, dto::lastfm::GetLastFm, infrastructure::redis::publish::restrict,
+    models::User, repository, state::AppState, usecases::password::verify_password,
 };
 
 async fn authenticate_user(
@@ -49,6 +49,43 @@ pub async fn get_lastfm(
     let flags = LastFmFlags::from_bits_truncate(raw);
     let explanations = flags.explain().join("\n");
 
+    // would be funny if someone still has hq!osu
+    if flags.contains(LastFmFlags::HQ_ASSEMBLY) || flags.contains(LastFmFlags::HQ_FILE) {
+        tokio::spawn(async move {
+            let _ = restrict::restrict(
+                &state.redis,
+                user.id,
+                &format!("hq!osu files found ({})", explanations),
+            )
+            .await;
+        });
+        return (StatusCode::OK, b"-3").into_response();
+    }
+
+    // they're probably already patched `ConfigManager`
+    // or some weak edits using `Harmony` or `Cheat Engine`
+    // yet, it's still punishable. since they are modifying the client.
+    if flags.contains(LastFmFlags::INVALID_CHEAT_VALUES) {
+        tokio::spawn(async move {
+            let _ = restrict::restrict(
+                &state.redis,
+                user.id,
+                &format!("invalid cheat values ({})", explanations),
+            )
+            .await;
+        });
+        return (StatusCode::OK, b"-3").into_response();
+    }
+
+    // not sure if we want to restrict for these
+    // since its possible that they doesn't even remember those multi account times
+    // if flags.contains(LastFmFlags::REGISTRY_EDITS) {
+    //     tokio::spawn(async move {
+    //         let _ = restrict::restrict(&state.redis, user.id, "hq!osu relife registry edits found").await;
+    //     });
+    //     return (StatusCode::OK, b"-3").into_response();
+    // }
+
     let webhook = Webhook::new(&state.config.webhook.debug).content(format!(
         "{} has been flagged with: 0x{} ({})",
         user.name(),
@@ -66,8 +103,6 @@ pub async fn get_lastfm(
     tokio::spawn(async move {
         let _ = webhook.post().await;
     });
-
-    // NOTE: flagged isn't always cheating, so restricting them is kinda nah
 
     (StatusCode::OK, b"-3").into_response()
 }
