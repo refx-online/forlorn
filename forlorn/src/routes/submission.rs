@@ -204,6 +204,27 @@ pub async fn submit_score(
         //       god i dont want to open up rider
     }
 
+    if !submission.refx() && score.mods().conflict() {
+        let _ = state.metrics.incr(
+            "score.mods_conflict",
+            [format!("mods:{}", score.mods().as_str())],
+        );
+
+        {
+            let r = state.redis.clone();
+            tokio::spawn(async move {
+                let _ = restrict::restrict(
+                    &r,
+                    user.id,
+                    &format!("illegal mod combination ({})", score.mods().as_str()),
+                )
+                .await;
+            });
+        }
+
+        return (StatusCode::OK, b"error: no").into_response();
+    }
+
     match ensure_local_osu_file(
         state.storage.beatmap_file(beatmap.id),
         &state.config.omajinai,

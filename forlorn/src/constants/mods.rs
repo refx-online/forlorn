@@ -88,4 +88,29 @@ impl Mods {
 
         out
     }
+
+    pub fn conflict(self) -> bool {
+        if self.contains(Mods::AUTOPLAY) || self.contains(Mods::CINEMA) {
+            return true;
+        }
+        if self.contains(Mods::DOUBLETIME) && self.contains(Mods::HALFTIME) {
+            return true;
+        }
+        if self.contains(Mods::NIGHTCORE) && !self.contains(Mods::DOUBLETIME) {
+            return true;
+        }
+        if self.contains(Mods::EASY) && self.contains(Mods::HARDROCK) {
+            return true;
+        }
+        if self.contains(Mods::NOFAIL)
+            && (self.contains(Mods::SUDDENDEATH) || self.contains(Mods::PERFECT))
+        {
+            return true;
+        }
+        if self.contains(Mods::RELAX) && self.contains(Mods::AUTOPILOT) {
+            return true;
+        }
+
+        false
+    }
 }
