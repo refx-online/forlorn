@@ -37,10 +37,7 @@ pub async fn get_error(
         Err(response) => return response,
     };
 
-    let user_id: i32 = match error.user_id {
-        Some(id) => id,
-        None => -1,
-    };
+    let user_id: i32 = error.user_id.unwrap_or(-1);
 
     let mut client_error = ClientError::from_error(error);
 
