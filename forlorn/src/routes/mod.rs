@@ -22,8 +22,8 @@ use crate::state::AppState;
 
 /// Unhandled routes:
 /// - /web/osu-comment.php - i fucking hate this
-/// - /web/osu-session.php - only for profiling and logging purposes, i don't think
-///                          i should implement this?
+/// - /web/osu-session.php - only for profiling and logging purposes,
+///   i don't think i should implement this?
 /// - /users/ - no
 /// - every beatmap submission related - i will separate it
 pub fn create_routes() -> Router<AppState> {
