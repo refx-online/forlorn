@@ -4,13 +4,13 @@ pub mod connection;
 pub mod direct;
 pub mod essentials;
 pub mod favourite;
-pub mod health;
 pub mod lastfm;
 pub mod leaderboard;
 pub mod rating;
 pub mod replay;
 pub mod screenshot;
 pub mod submission;
+pub mod v1;
 
 use axum::{
     Router,
@@ -22,7 +22,7 @@ use crate::state::AppState;
 pub fn create_routes() -> Router<AppState> {
     Router::new()
         .route("/", get(essentials::get_root))
-        .route("/health", get(health::health))
+        .nest("/api/v1", v1::create_routes())
         // osu route
         .route(
             "/web/osu-submit-modular-selector.php",
