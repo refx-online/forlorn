@@ -18,6 +18,19 @@ pub async fn get_calculate_map(
     State(state): State<AppState>,
     Query(calculate): Query<GetCalculateMap>,
 ) -> (StatusCode, Json<Value>) {
+    if repository::user::fetch_by_api_key(&state.db, &calculate.api_key)
+        .await
+        .is_err()
+    {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!(
+            {
+                "reason": "Your api key is Revoked / Doesn't exists.",
+            })),
+        );
+    }
+
     let accuracy = calculate.accuracy.unwrap_or(100.0);
     let mode = calculate.mode.unwrap_or(0);
     let mods = calculate.mods.unwrap_or(0);

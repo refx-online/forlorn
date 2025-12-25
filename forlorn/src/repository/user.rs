@@ -21,6 +21,20 @@ pub async fn fetch_by_name(db: &DbPoolManager, username: &str) -> Result<Option<
     Ok(user)
 }
 
+pub async fn fetch_by_api_key(db: &DbPoolManager, api_key: &str) -> Result<Option<User>> {
+    let user = sqlx::query_as::<_, User>(
+        "select id, name, safe_name, priv as privilege, pw_bcrypt, country, silence_end, donor_end, 
+                creation_time, latest_activity, clan_id, clan_priv, preferred_mode, 
+                play_style, custom_badge_name, custom_badge_icon, userpage_content, 
+                api_key, whitelist, preferred_metric from users where api_key = ?"
+    )
+        .bind(api_key)
+        .fetch_optional(db.as_ref())
+        .await?;
+
+    Ok(user)
+}
+
 pub async fn fetch_prev_n1(
     db: &DbPoolManager,
     score: &Score,
