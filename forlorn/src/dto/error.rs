@@ -31,5 +31,5 @@ pub struct GetError {
     pub version: String,
 
     #[serde(rename = "ss")]
-    pub screenshot_file: Option<String>,
+    pub screenshot_data: Option<Vec<u8>>,
 }

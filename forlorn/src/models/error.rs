@@ -15,6 +15,9 @@ pub struct ClientError {
     pub stacktrace: Option<String>,
 
     pub created_at: DateTime<Utc>,
+
+    #[sqlx(skip)]
+    pub screenshot_data: Option<Vec<u8>>,
 }
 
 impl ClientError {
@@ -27,6 +30,7 @@ impl ClientError {
             exception: error.exception,
             stacktrace: error.stacktrace.filter(|s| s.len() < 2000),
             created_at: Utc::now(),
+            screenshot_data: Some(error.screenshot_data.unwrap_or_default()),
         }
     }
 }

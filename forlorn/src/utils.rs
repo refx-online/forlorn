@@ -7,7 +7,7 @@ use tokio::signal::{
 };
 
 use crate::{
-    dto::{screenshot::ScreenshotUpload, submission::ScoreSubmission},
+    dto::{error::GetError, screenshot::ScreenshotUpload, submission::ScoreSubmission},
     models::{Beatmap, LeaderboardScore, PersonalBest, Score, Stats, User},
     repository,
     state::AppState,
@@ -99,6 +99,29 @@ pub fn build_screenshot_upload(fields: HashMap<String, Bytes>) -> Option<Screens
         password_md5: get_string("p")?,
         version: get_i32("v"),
         screenshot_data: fields.get("ss")?.to_vec(),
+    })
+}
+
+pub fn build_error_upload(fields: HashMap<String, Bytes>) -> Option<GetError> {
+    let get_string = |key: &str| -> Option<String> {
+        fields
+            .get(key)
+            .map(|b| String::from_utf8_lossy(b).to_string())
+    };
+
+    let get_i32 = |key: &str| -> Option<i32> { get_string(key).and_then(|s| s.parse().ok()) };
+
+    Some(GetError {
+        username: get_string("u"),
+        password_md5: get_string("h"),
+        user_id: get_i32("i"),
+        stacktrace: get_string("stacktrace"),
+        exception: get_string("exception"),
+        feedback: get_string("feedback"),
+        config: get_string("config")?,
+        exe_hash: get_string("exehash")?,
+        version: get_string("version")?,
+        screenshot_data: fields.get("ss").map(|b| b.to_vec()),
     })
 }
 
