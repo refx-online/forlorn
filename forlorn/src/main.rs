@@ -15,7 +15,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use config::Config;
 use dotenvy::dotenv;
-use infrastructure::{database, redis, redis::subscriber::SubscriberHandler, tasks};
+use infrastructure::{database, redis, redis::subscriber::SubscriberHandler};
 use routes::create_routes;
 use state::AppState;
 use storage::Storage;
@@ -31,7 +31,8 @@ async fn main() -> Result<()> {
     let config = Arc::new(config);
 
     let db_pool = database::create_pool(&config.database).await?;
-    let (redis_conn, subscriber_conn) = redis::create_connection(&config.redis).await?;
+    let (redis_conn, subscriber_conn, score_locks) =
+        redis::create_connection(&config.redis).await?;
 
     let storage = Storage::new(
         config.omajinai.beatmap_path.clone(),
@@ -46,11 +47,11 @@ async fn main() -> Result<()> {
         db_pool,
         redis_conn,
         subscriber_conn,
+        score_locks,
     );
 
     let subscriber = SubscriberHandler::new(state.clone());
 
-    tokio::spawn(tasks::cleanup_score_locks(state.score_locks.clone()));
     tokio::spawn(async move {
         if let Err(e) = subscriber.start_listener().await {
             tracing::error!("pubsub listener crashed: {e:?}");

@@ -5,6 +5,7 @@ use redis::{
     Client,
     aio::{MultiplexedConnection, PubSub},
 };
+use rslock::LockManager;
 use tokio::sync::Mutex;
 
 use crate::config::RedisConfig;
@@ -17,7 +18,7 @@ pub type RedisPubsubManager = Arc<Mutex<PubSub>>;
 
 pub async fn create_connection(
     config: &RedisConfig,
-) -> Result<(RedisConnectionManager, RedisPubsubManager)> {
+) -> Result<(RedisConnectionManager, RedisPubsubManager, LockManager)> {
     let redis_url = match &config.password {
         Some(pass) => format!(
             "redis://:{}@{}:{}/{}",
@@ -26,13 +27,16 @@ pub async fn create_connection(
         None => format!("redis://{}:{}/{}", config.host, config.port, config.db),
     };
 
-    let client = Client::open(redis_url)?;
+    let client = Client::open(redis_url.clone())?;
 
     let connection = client.get_multiplexed_async_connection().await?;
     let pubsub_connection = client.get_async_pubsub().await?;
 
+    let lock_manager = LockManager::new(vec![redis_url]);
+
     Ok((
         Arc::new(Mutex::new(connection)),
         Arc::new(Mutex::new(pubsub_connection)),
+        lock_manager,
     ))
 }

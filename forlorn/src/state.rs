@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use dashmap::{DashMap, DashSet};
+use dashmap::DashSet;
+use rslock::LockManager;
 use storage::Storage;
-use tokio::sync::Mutex;
 
 use crate::{
     config::Config,
@@ -19,7 +19,7 @@ pub struct AppState {
     pub db: DbPoolManager,
     pub redis: RedisConnectionManager,
     pub subscriber: RedisPubsubManager,
-    pub score_locks: Arc<DashMap<String, Arc<Mutex<()>>>>,
+    pub score_locks: LockManager,
     pub unsubmitted_maps: Arc<DashSet<String>>,
     pub needs_update_maps: Arc<DashSet<String>>,
 }
@@ -31,6 +31,7 @@ impl AppState {
         db: DbPoolManager,
         redis: RedisConnectionManager,
         subscriber: RedisPubsubManager,
+        score_locks: LockManager,
     ) -> Self {
         Self {
             config,
@@ -38,7 +39,7 @@ impl AppState {
             db,
             redis,
             subscriber,
-            score_locks: Arc::new(DashMap::new()),
+            score_locks,
             unsubmitted_maps: Arc::new(DashSet::new()),
             needs_update_maps: Arc::new(DashSet::new()),
         }

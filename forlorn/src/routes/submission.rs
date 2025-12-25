@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 use axum::{
     body::Bytes,
@@ -6,7 +9,6 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use tokio::sync::Mutex;
 use webhook::Webhook;
 
 use crate::{
@@ -152,16 +154,81 @@ pub async fn submit_score(
         None => return (StatusCode::OK, b"error: no").into_response(),
     };
 
-    let submission_lock = state
+    score.mode = score.mode().as_i32();
+    score.acc = calculate_accuracy(&score);
+    consume_cheat_values(&mut score, &submission);
+
+    // always update last activity no matter what
+    {
+        let d = state.db.clone();
+        tokio::spawn(async move {
+            let _ = repository::user::update_latest_activity(&d, user.id).await;
+        });
+    }
+
+    if submission.refx() && !validate_cheat_values(&score) {
+        let webhook = Webhook::new(&state.config.webhook.debug).content(format!(
+            "[{}] {} Overcheat? (malformed cheat value) [ac={}|tw={}|cs={}]",
+            score.mode().as_str(),
+            user.name(),
+            score.aim_correction_value,
+            score.timewarp_value,
+            score.uses_cs_changer
+        ));
+
+        tracing::warn!(
+            "[{}] {} submitted a malformed cheat value [ac={}|tw={}|cs={}]",
+            score.mode().as_str(),
+            user.name(),
+            score.aim_correction_value,
+            score.timewarp_value,
+            score.uses_cs_changer
+        );
+
+        tokio::spawn(async move {
+            let _ = webhook.post().await;
+        });
+
+        // NOTE: it's not a good idea to return here,
+        //       we let them submit since its possibly their client's submission error.
+        //       or theres a big flaw on the client that ano (me) need to fix
+        //       god i dont want to open up rider
+    }
+
+    match ensure_local_osu_file(
+        state.storage.beatmap_file(beatmap.id),
+        &state.config.omajinai,
+        &beatmap,
+    )
+    .await
+    {
+        Ok(true) => {},
+        _ => {
+            return (StatusCode::OK, b"error: no").into_response();
+        },
+    }
+
+    let _submission_lock_ = match state
         .score_locks
-        .entry(score.online_checksum.clone())
-        .or_insert_with(|| Arc::new(Mutex::new(())))
-        .clone();
+        .lock(
+            format!("refx:score_submission:{}", score.online_checksum).as_bytes(),
+            Duration::from_secs(15),
+        )
+        .await
+    {
+        Ok(lock) => lock,
+        _ => {
+            tracing::warn!(
+                "failed to acquire submission lock for {}",
+                score.online_checksum,
+            );
+
+            // empty response so we can tell them to retry
+            return (StatusCode::OK).into_response();
+        },
+    };
 
     let charts = {
-        // NOTE: to ensure no duplicates.
-        let _mutex_guard = submission_lock.lock().await;
-
         if let Ok(Some(_)) =
             repository::score::fetch_by_online_checksum(&state.db, &score.online_checksum).await
         {
@@ -173,82 +240,29 @@ pub async fn submit_score(
             return (StatusCode::OK, b"error: no").into_response();
         }
 
-        score.mode = score.mode().as_i32();
-
-        // always update last activity no matter what
-        let _ = repository::user::update_latest_activity(&state.db, user.id).await;
-
-        // idea: maybe, just maybe i could create another service that
-        //       handles score validation with also player validation?
-        //       would be fun, but for now, i will (?) complete this first.
-        // ref: https://github.com/remeliah/meat-my-beat-i/blob/0121e875e142dbb7278ca4b171dd8c1095e26fb0/app/api/domains/osu.py#L719-L769
-        //      https://github.com/remeliah/meat-my-beat-i/blob/main/app/usecases/ac.py
-
-        consume_cheat_values(&mut score, &submission);
-
-        if submission.refx() && !validate_cheat_values(&score) {
-            let webhook = Webhook::new(&state.config.webhook.debug).content(format!(
-                "[{}] {} Overcheat? (malformed cheat value) [ac={}|tw={}|cs={}]",
-                score.mode().as_str(),
-                user.name(),
-                score.aim_correction_value,
-                score.timewarp_value,
-                score.uses_cs_changer
-            ));
-
-            tracing::warn!(
-                "[{}] {} submitted a malformed cheat value [ac={}|tw={}|cs={}]",
-                score.mode().as_str(),
-                user.name(),
-                score.aim_correction_value,
-                score.timewarp_value,
-                score.uses_cs_changer
-            );
-
-            tokio::spawn(async move {
-                let _ = webhook.post().await;
-            });
-
-            // NOTE: it's not a good idea to return here,
-            //       we let them submit since its possibly their client's submission error.
-            //       or theres a big flaw on the client that ano (me) need to fix
-            //       god i dont want to open up rider
-        }
-
-        score.acc = calculate_accuracy(&score);
-
-        if let Ok(true) = ensure_local_osu_file(
-            state.storage.beatmap_file(beatmap.id),
+        (score.pp, score.stars, score.hypothetical_pp) = calculate_performance(
             &state.config.omajinai,
-            &beatmap,
+            beatmap.id,
+            score.mode,
+            score.mods,
+            score.max_combo,
+            score.acc,
+            score.nmiss,
+            score.score,
         )
-        .await
-        {
-            (score.pp, score.stars, score.hypothetical_pp) = calculate_performance(
-                &state.config.omajinai,
-                beatmap.id,
-                score.mode,
-                score.mods,
-                score.max_combo,
-                score.acc,
-                score.nmiss,
-                score.score,
-            )
-            .await;
+        .await;
 
-            if score.passed {
-                if let Ok(Some(prev_best)) = calculate_status(&state.db, &mut score).await {
-                    let _ =
-                        repository::score::update_status(&state.db, prev_best.id, prev_best.status)
-                            .await;
-                }
-
-                if beatmap.status != RankedStatus::Pending.as_i32() {
-                    score.rank = calculate_placement(&state.db, &score).await;
-                }
-            } else {
-                score.status = SubmissionStatus::Failed.as_i32();
+        if score.passed {
+            if let Ok(Some(prev_best)) = calculate_status(&state.db, &mut score).await {
+                let _ = repository::score::update_status(&state.db, prev_best.id, prev_best.status)
+                    .await;
             }
+
+            if beatmap.status != RankedStatus::Pending.as_i32() {
+                score.rank = calculate_placement(&state.db, &score).await;
+            }
+        } else {
+            score.status = SubmissionStatus::Failed.as_i32();
         }
 
         score.time_elapsed =
@@ -303,7 +317,7 @@ pub async fn submit_score(
 
                 tokio::spawn(async move {
                     if (tokio::fs::write(&replay_path, &submission.replay_file).await).is_err() {
-                        // NOTE: not returning here since it would break submission (duh)
+                        tracing::warn!("failed to save replay! ({})", score.id)
                     }
                 });
             } else {
@@ -458,8 +472,6 @@ pub async fn submit_score(
 
         build_submission_charts(&score, &beatmap, &stats, &prev_stats, &state).await
     };
-
-    state.score_locks.remove(&score.online_checksum);
 
     (StatusCode::OK, charts.into_bytes()).into_response()
 }

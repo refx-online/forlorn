@@ -366,10 +366,11 @@ pub fn first_place_webhook(
     prev_holder: Option<(i32, String)>,
 ) -> Webhook {
     let desc = format!(
-        "{} ▸ {}pp ({}pp) ▸ {}\n{:.2}% ▸ [{}/{}/{}/{}x] ▸ {}/{}x ▸ {}",
+        "{} ▸ {}pp ({}pp) [{}xp] ▸ {}\n{:.2}% ▸ [{}/{}/{}/{}x] ▸ {}/{}x ▸ {}",
         score.grade().discord_emoji(),
         fmt_f(score.pp),              // formatted to match python
         fmt_f(score.hypothetical_pp), // formatted to match python
+        fmt_f(score.xp),              // formatted to match python
         fmt_n(score.score),           // formatted to match python
         score.acc,
         score.n300,
