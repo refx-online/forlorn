@@ -2,6 +2,7 @@ pub mod beatmap;
 pub mod channel;
 pub mod connection;
 pub mod direct;
+pub mod error;
 pub mod essentials;
 pub mod favourite;
 pub mod lastfm;
@@ -53,6 +54,7 @@ pub fn create_routes() -> Router<AppState> {
             "/web/osu-search-set.php",
             get(direct::get_direct_search_set),
         )
+        .route("/web/osu-error.php", post(error::get_error))
         // refx route
         // TODO: ask myself in the future to revert these ancient routes
         //       to its original route, so i dont have to
