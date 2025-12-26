@@ -284,6 +284,24 @@ pub async fn submit_score(
         )
         .await;
 
+        if score.pp.round() == 2112.0 || score.pp.round() == 727.0 {
+            // And this is the part
+            // Where our whole lives collide
+            // The stars themselves fell
+            // Like we did that night
+            // Though it felt like the universe knew
+            // A pack of friends who couldn't hold their laughter
+            // They chose to be painfully obvious in front of us
+            // Slightly unaware or in denial of the dangers ahead
+            // We thrust our weary hearts into each other's arms
+            // Content and comfortable
+            // For years to come
+            let r = state.redis.clone();
+            tokio::spawn(async move {
+                let _ = notify::notify(&r, user.id, "Let's be mature.").await;
+            });
+        }
+
         if score.passed {
             if let Ok(Some(prev_best)) = calculate_status(&state.db, &mut score).await {
                 let _ = repository::score::update_status(&state.db, prev_best.id, prev_best.status)
