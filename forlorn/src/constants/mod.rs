@@ -1,4 +1,5 @@
 pub mod grade;
+pub mod hashes;
 pub mod lastfm;
 pub mod leaderboard;
 pub mod mode;
@@ -7,6 +8,7 @@ pub mod privileges;
 pub mod status;
 
 pub use grade::Grade;
+pub use hashes::REFX_CURRENT_CLIENT_HASH;
 pub use lastfm::LastFmFlags;
 pub use leaderboard::LeaderboardType;
 pub use mode::GameMode;

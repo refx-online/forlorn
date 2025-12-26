@@ -12,7 +12,7 @@ use axum::{
 use webhook::Webhook;
 
 use crate::{
-    constants::{Grade, RankedStatus, SubmissionStatus},
+    constants::{Grade, REFX_CURRENT_CLIENT_HASH, RankedStatus, SubmissionStatus},
     dto::submission::{ScoreHeader, ScoreSubmission},
     infrastructure::redis::publish::{announce, notify, refresh_stats, restrict},
     models::{Score, User},
@@ -30,8 +30,6 @@ use crate::{
     },
     utils::{build_submission, build_submission_charts},
 };
-
-const REFX_CURRENT_CLIENT_HASH: &str = "230cd99998f1a18dbc787612179bae0e";
 
 async fn authenticate_user(
     state: &AppState,

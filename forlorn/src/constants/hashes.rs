@@ -1,0 +1,1 @@
+pub const REFX_CURRENT_CLIENT_HASH: &str = "478f3bb183aa531828b59e31ae89342a";

@@ -12,5 +12,5 @@ pub struct GetLastFm {
     pub action: String,
 
     #[serde(rename = "b")]
-    pub flag: String,
+    pub flag: String, // or beatmap id
 }
