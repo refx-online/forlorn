@@ -298,6 +298,15 @@ pub async fn submit_score(
             // For years to come
             let r = state.redis.clone();
             tokio::spawn(async move {
+                // She said to me
+                // And I said to her
+                // To hold back each other's true fate
+                // Is not of our nature
+                // Let's be mature
+                // Maybe you weren't made for me
+                // Nor I for you
+                // But I'd be damn lying
+                // If I think that that's true
                 let _ = notify::notify(&r, user.id, "Let's be mature.").await;
             });
         }
