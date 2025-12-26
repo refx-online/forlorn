@@ -127,7 +127,7 @@ impl Beatmap {
 
     pub fn url(&self) -> String {
         // todo: use env
-        format!("https://remeliah.cyou/beatmaps/{}", self.id)
+        format!("https://refx.online/beatmaps/{}", self.id)
     }
 
     pub fn has_leaderboard(&self) -> bool {

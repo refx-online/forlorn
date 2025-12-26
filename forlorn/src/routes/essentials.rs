@@ -118,9 +118,9 @@ pub async fn post_difficulty_rating() -> impl IntoResponse {
 }
 
 pub async fn get_redirect_beatmap(Path(map_id): Path<String>) -> impl IntoResponse {
-    Redirect::permanent(&format!("https://remeliah.cyou/beatmaps/{map_id}")).into_response()
+    Redirect::permanent(&format!("https://refx.online/beatmaps/{map_id}")).into_response()
 }
 
 pub async fn get_redirect_profile(Path(user_id): Path<String>) -> impl IntoResponse {
-    Redirect::permanent(&format!("https://remeliah.cyou/u/{user_id}")).into_response()
+    Redirect::permanent(&format!("https://refx.online/u/{user_id}")).into_response()
 }

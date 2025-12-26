@@ -152,7 +152,7 @@ pub async fn build_submission_charts(
 
     charts.push("chartId:beatmap".to_string());
     charts.push(format!(
-        "chartUrl:https://remeliah.cyou/beatmaps/{}",
+        "chartUrl:https://refx.online/beatmaps/{}",
         beatmap.set_id
     ));
     charts.push("chartName:Beatmap Ranking".to_string());
@@ -183,7 +183,7 @@ pub async fn build_submission_charts(
     charts.push("\n".to_string());
 
     charts.push("chartId:overall".to_string());
-    charts.push(format!("chartUrl:https://remeliah.cyou/u/{}", score.userid));
+    charts.push(format!("chartUrl:https://refx.online/u/{}", score.userid));
     charts.push("chartName:Overall Ranking".to_string());
     charts.push(chart_entry("rank", prev_stats.rank, stats.rank));
     charts.push(chart_entry("rankedScore", prev_stats.rscore, stats.rscore));

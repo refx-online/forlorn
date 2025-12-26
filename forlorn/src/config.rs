@@ -125,7 +125,7 @@ impl Default for OmajinaiConfig {
     fn default() -> Self {
         Self {
             base_url: "http://localhost:9292".into(),
-            beatmap_service_url: "https://b.remeliah.cyou".into(),
+            beatmap_service_url: "https://b.refx.online".into(),
             beatmap_path: PathBuf::from(".data/osu"),
         }
     }

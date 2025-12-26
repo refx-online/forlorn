@@ -381,7 +381,7 @@ pub fn first_place_webhook(
     #[allow(clippy::uninlined_format_args)]
     let content: String = if let Some((prev_id, prev_name)) = prev_holder {
         format!(
-            "previously held by [{}](https://remeliah.cyou/u/{})",
+            "previously held by [{}](https://refx.online/u/{})",
             prev_name, prev_id
         )
     } else {
@@ -405,6 +405,6 @@ pub fn first_place_webhook(
     Webhook::new(webhook_url)
         .username(&user.name)
         .content(content)
-        .avatar_url(format!("https://a.remeliah.cyou/{}", user.id))
+        .avatar_url(format!("https://a.refx.online/{}", user.id))
         .add_embed(embed)
 }
