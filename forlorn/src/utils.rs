@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use axum::body::Bytes;
+use md5::{Digest, Md5};
 use tokio::signal::{
     self,
     unix::{self, SignalKind},
@@ -245,6 +246,30 @@ pub async fn build_empty_leaderboard(beatmap: &Beatmap, state: &AppState) -> Str
     );
 
     resp
+}
+
+pub async fn save_screenshot(state: &AppState, screenshot_data: Vec<u8>) -> String {
+    let ext = if screenshot_data.len() > 10
+        && (&screenshot_data[6..10] == b"JFIF" || &screenshot_data[6..10] == b"Exif")
+    {
+        "jpeg"
+    } else {
+        "png"
+    };
+
+    let mut hasher = Md5::new();
+    hasher.update(&screenshot_data);
+
+    let hash = format!("{:x}", hasher.finalize());
+
+    let file_name = format!("{}.{}", &hash[..8], ext);
+    let path = state.storage.screenshot_file(&file_name);
+
+    tokio::spawn(async move {
+        let _ = tokio::fs::write(&path, &screenshot_data).await;
+    });
+
+    file_name
 }
 
 pub async fn build_display_name(user: &User, state: &AppState) -> String {

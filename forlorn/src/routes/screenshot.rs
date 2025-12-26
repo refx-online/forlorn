@@ -6,12 +6,15 @@ use axum::{
     http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
 };
-use md5::{Digest, Md5};
 use tokio::fs;
 
 use crate::{
-    dto::screenshot::ScreenshotUpload, models::User, repository, state::AppState,
-    usecases::password::verify_password, utils::build_screenshot_upload,
+    dto::screenshot::ScreenshotUpload,
+    models::User,
+    repository,
+    state::AppState,
+    usecases::password::verify_password,
+    utils::{build_screenshot_upload, save_screenshot},
 };
 
 const MAX_SCREENSHOT_SIZE: usize = 10 * 1024 * 1024; // 10MB
@@ -85,30 +88,7 @@ pub async fn upload_screenshot(
         tracing::warn!("Incorrect endpoint version v{}", v);
     }
 
-    let ext = if upload.screenshot_data.len() > 10
-        && (&upload.screenshot_data[6..10] == b"JFIF" || &upload.screenshot_data[6..10] == b"Exif")
-    {
-        "jpeg"
-    } else if upload.screenshot_data.starts_with(b"\x89PNG\r\n\x1a\n") {
-        "png"
-    } else {
-        return (StatusCode::BAD_REQUEST, "file type").into_response();
-    };
-
-    let mut hasher = Md5::new();
-    hasher.update(&upload.screenshot_data);
-
-    let hash = format!("{:x}", hasher.finalize());
-
-    let file_name = format!("{}.{}", &hash[..8], ext);
-    let path = state.storage.screenshot_file(&file_name);
-
-    if tokio::fs::write(&path, &upload.screenshot_data)
-        .await
-        .is_err()
-    {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    }
+    let file_name = save_screenshot(&state, upload.screenshot_data).await;
 
     let _ = state.metrics.incr("screenshot.uploaded", ["status:ok"]);
 

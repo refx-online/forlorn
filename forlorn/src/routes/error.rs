@@ -6,11 +6,13 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use md5::{Digest, Md5};
 
 use crate::{
-    dto::error::GetError, models::ClientError, repository, state::AppState,
-    utils::build_error_upload,
+    dto::error::GetError,
+    models::ClientError,
+    repository,
+    state::AppState,
+    utils::{build_error_upload, save_screenshot},
 };
 
 async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<GetError, Response> {
@@ -66,27 +68,12 @@ pub async fn get_error(
     let _ = state.metrics.incr("error.experienced", ["status:ok"]);
 
     if let Some(screenshot_data) = client_error.screenshot_data.take() {
-        let ext = if screenshot_data.len() > 10
-            && (&screenshot_data[6..10] == b"JFIF" || &screenshot_data[6..10] == b"Exif")
-        {
-            "jpeg"
-        } else if screenshot_data.starts_with(b"\x89PNG\r\n\x1a\n") {
-            "png"
-        } else {
-            return (StatusCode::BAD_REQUEST, "file type").into_response();
-        };
+        let file_name = save_screenshot(&state, screenshot_data).await;
 
-        let mut hasher = Md5::new();
-        hasher.update(&screenshot_data);
-
-        let hash = format!("{:x}", hasher.finalize());
-
-        let file_name = format!("{}.{}", &hash[..8], ext);
-        let path = state.storage.screenshot_file(&file_name);
-
-        tokio::spawn(async move {
-            let _ = tokio::fs::write(&path, &screenshot_data).await;
-        });
+        tracing::info!(
+            "{} uploaded error screenshot {file_name}",
+            client_error.username
+        );
     }
 
     tokio::spawn(async move {
