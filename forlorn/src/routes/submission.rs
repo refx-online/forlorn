@@ -14,7 +14,7 @@ use webhook::Webhook;
 use crate::{
     constants::{Grade, REFX_CURRENT_CLIENT_HASH, RankedStatus, SubmissionStatus},
     dto::submission::{ScoreHeader, ScoreSubmission},
-    infrastructure::redis::publish::{announce, notify, refresh_stats, restrict},
+    infrastructure::redis::publish::{announce, notify, refresh_stats, restrict, score},
     models::{Score, User},
     repository,
     state::AppState,
@@ -513,6 +513,13 @@ pub async fn submit_score(
             let mut b = beatmap.clone();
             tokio::spawn(async move {
                 let _ = increment_playcount(&d, &mut b, score.passed).await;
+            });
+        }
+
+        {
+            let r = state.redis.clone();
+            tokio::spawn(async move {
+                let _ = score::score_submitted(&r, score.id).await;
             });
         }
 

@@ -4,6 +4,7 @@ pub mod announce;
 pub mod notify;
 pub mod refresh_stats;
 pub mod restrict;
+pub mod score;
 
 pub async fn publish(
     redis: &RedisConnectionManager,
