@@ -28,6 +28,7 @@ use crate::state::AppState;
 /// - every beatmap submission related - i will separate it
 pub fn create_routes() -> Router<AppState> {
     Router::new()
+        .route("/", get(essentials::get_redirect_frontend))
         .nest("/api/v1", v1::create_routes())
         // osu route
         .route(

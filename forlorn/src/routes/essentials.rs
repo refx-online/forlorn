@@ -124,3 +124,7 @@ pub async fn get_redirect_beatmap(Path(map_id): Path<String>) -> impl IntoRespon
 pub async fn get_redirect_profile(Path(user_id): Path<String>) -> impl IntoResponse {
     Redirect::permanent(&format!("https://refx.online/u/{user_id}")).into_response()
 }
+
+pub async fn get_redirect_frontend() -> impl IntoResponse {
+    Redirect::permanent("https://refx.online").into_response()
+}
