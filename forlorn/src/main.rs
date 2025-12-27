@@ -40,7 +40,12 @@ async fn main() -> Result<()> {
         config.replay_path.clone(),
         config.screenshot_path.clone(),
         config.osz_path.clone(),
-    );
+        &config.r2.bucket,
+        &format!("https://{}.r2.cloudflarestorage.com", config.r2.account_id),
+        &config.r2.access_key,
+        &config.r2.secret_key,
+    )
+    .await;
 
     let state = AppState::new(
         config.clone(),

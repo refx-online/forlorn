@@ -223,13 +223,7 @@ pub async fn submit_score(
         return (StatusCode::OK, b"error: no").into_response();
     }
 
-    match ensure_local_osu_file(
-        state.storage.beatmap_file(beatmap.id),
-        &state.config.omajinai,
-        &beatmap,
-    )
-    .await
-    {
+    match ensure_local_osu_file(&state.storage, &state.config.omajinai, &beatmap).await {
         Ok(true) => {},
         _ => {
             return (StatusCode::OK, b"error: no").into_response();
@@ -376,13 +370,10 @@ pub async fn submit_score(
             const MIN_REPLAY_SIZE: usize = 24;
 
             if submission.replay_file.len() >= MIN_REPLAY_SIZE {
-                let replay_path = state.storage.replay_file(score.id);
-
-                tokio::spawn(async move {
-                    if (tokio::fs::write(&replay_path, &submission.replay_file).await).is_err() {
-                        tracing::warn!("failed to save replay! ({})", score.id)
-                    }
-                });
+                let _ = state
+                    .storage
+                    .save_replay(score.id, &submission.replay_file)
+                    .await;
             } else {
                 let r = state.redis.clone();
                 tokio::spawn(async move {

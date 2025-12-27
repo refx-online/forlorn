@@ -1,7 +1,8 @@
-use std::{fs, path::PathBuf};
+use std::fs;
 
 use anyhow::Result;
 use md5::{Digest, Md5};
+use storage::Storage;
 
 use crate::{
     config::OmajinaiConfig,
@@ -30,22 +31,32 @@ pub async fn increment_playcount(
 }
 
 pub async fn ensure_local_osu_file(
-    osu_file_path: PathBuf,
+    storage: &Storage,
     config: &OmajinaiConfig,
     beatmap: &Beatmap,
 ) -> Result<bool> {
+    let osu_file_path = storage.beatmap_file(beatmap.id);
     let osu_file_bytes = if osu_file_path.exists() {
         fs::read(&osu_file_path)?
     } else {
-        tracing::info!(
-            "fetching <{} ({})> from beatmap service.",
-            beatmap.full_name(),
-            beatmap.id
-        );
-        let bytes = fetch_beatmap(config, beatmap.id).await?;
-        fs::write(&osu_file_path, &bytes)?;
+        match storage.load_beatmap(beatmap.id).await {
+            Ok(bytes) if !bytes.is_empty() => {
+                let _ = storage.save_beatmap(beatmap.id, &bytes).await;
 
-        bytes
+                bytes
+            },
+            _ => {
+                tracing::info!(
+                    "fetching <{} ({})> from beatmap service.",
+                    beatmap.full_name(),
+                    beatmap.id
+                );
+                let bytes = fetch_beatmap(config, beatmap.id).await?;
+                let _ = storage.save_beatmap(beatmap.id, &bytes).await;
+
+                bytes
+            },
+        }
     };
     let mut md5_hasher = Md5::new();
     md5_hasher.update(&osu_file_bytes);

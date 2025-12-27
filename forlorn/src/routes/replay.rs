@@ -1,11 +1,11 @@
 use std::time::Instant;
 
 use axum::{
+    body::Bytes,
     extract::{Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use axum_extra::response::file_stream::FileStream;
 
 use crate::{
     dto::replay::GetReplay, models::User, repository, state::AppState,
@@ -46,8 +46,6 @@ pub async fn get_replay(
         Err(response) => return response,
     };
 
-    let file = state.storage.replay_file(score.id);
-
     if user.id != score.userid {
         tokio::spawn(async move {
             let _ = repository::stats::increment_replay_views(
@@ -69,8 +67,8 @@ pub async fn get_replay(
 
     tracing::info!("Replay served to {} in {}ms.", user.name, done.as_millis());
 
-    match FileStream::from_path(file).await {
-        Ok(replay) => replay.into_response(),
+    match state.storage.load_replay(replay.score_id).await {
+        Ok(replay) => Bytes::from(replay).into_response(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
 }

@@ -6,7 +6,6 @@ use axum::{
     http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
 };
-use tokio::fs;
 
 use crate::{
     dto::screenshot::ScreenshotUpload,
@@ -110,11 +109,6 @@ pub async fn get_screenshot(
     }
 
     let file_name = format!("{}.{}", screenshot_id, extension);
-    let screenshot_path = state.storage.screenshot_file(&file_name);
-
-    if !screenshot_path.exists() {
-        return (StatusCode::NOT_FOUND, "not found").into_response();
-    }
 
     let media_type = match extension {
         "jpg" | "jpeg" => "image/jpeg",
@@ -122,7 +116,7 @@ pub async fn get_screenshot(
         _ => "application/octet-stream",
     };
 
-    match fs::read(&screenshot_path).await {
+    match state.storage.load_screenshot(&file_name).await {
         Ok(contents) => (
             [
                 (header::CONTENT_TYPE, media_type),

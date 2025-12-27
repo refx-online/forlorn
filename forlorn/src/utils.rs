@@ -263,11 +263,11 @@ pub async fn save_screenshot(state: &AppState, screenshot_data: Vec<u8>) -> Stri
     let hash = format!("{:x}", hasher.finalize());
 
     let file_name = format!("{}.{}", &hash[..8], ext);
-    let path = state.storage.screenshot_file(&file_name);
 
-    tokio::spawn(async move {
-        let _ = tokio::fs::write(&path, &screenshot_data).await;
-    });
+    let _ = state
+        .storage
+        .save_screenshot(&file_name, &screenshot_data)
+        .await;
 
     file_name
 }

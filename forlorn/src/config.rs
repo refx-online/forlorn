@@ -13,6 +13,7 @@ pub struct Config {
     pub database: DatabaseConfig,
     pub redis: RedisConfig,
     pub datadog: DatadogConfig,
+    pub r2: CloudflareR2Config,
     pub omajinai: OmajinaiConfig,
     pub webhook: DiscordWebhookConfig,
     pub osu: OsuConfig,
@@ -42,6 +43,14 @@ pub struct DatadogConfig {
     pub host: String,
     pub port: u16,
     pub namespace: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloudflareR2Config {
+    pub account_id: String,
+    pub access_key: String,
+    pub secret_key: String,
+    pub bucket: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,6 +88,7 @@ impl Default for Config {
             database: DatabaseConfig::default(),
             redis: RedisConfig::default(),
             datadog: DatadogConfig::default(),
+            r2: CloudflareR2Config::default(),
             omajinai: OmajinaiConfig::default(),
             webhook: DiscordWebhookConfig::default(),
             osu: OsuConfig::default(),
@@ -117,6 +127,17 @@ impl Default for DatadogConfig {
             host: "127.0.0.1".into(),
             port: 8125,
             namespace: "refx".into(),
+        }
+    }
+}
+
+impl Default for CloudflareR2Config {
+    fn default() -> Self {
+        Self {
+            account_id: "account_id".into(),
+            access_key: "access_key".into(),
+            secret_key: "secret_key".into(),
+            bucket: "none".into(),
         }
     }
 }
@@ -209,6 +230,19 @@ impl Config {
         }
         if let Ok(datadog_namespace) = std::env::var("DATADOG_NAMESPACE") {
             config.datadog.namespace = datadog_namespace;
+        }
+
+        if let Ok(r2_account_id) = std::env::var("R2_ACCOUNT_ID") {
+            config.r2.account_id = r2_account_id;
+        }
+        if let Ok(r2_access_key) = std::env::var("R2_ACCESS_KEY") {
+            config.r2.access_key = r2_access_key;
+        }
+        if let Ok(r2_secret_key) = std::env::var("R2_SECRET_KEY") {
+            config.r2.secret_key = r2_secret_key;
+        }
+        if let Ok(r2_bucket) = std::env::var("R2_BUCKET") {
+            config.r2.bucket = r2_bucket;
         }
 
         if let Ok(omajinai_url) = std::env::var("OMAJINAI_BASE_URL") {

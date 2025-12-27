@@ -95,13 +95,9 @@ pub async fn get_calculate_map(
         "last_update": beatmap.last_update,
     });
 
-    if ensure_local_osu_file(
-        state.storage.beatmap_file(beatmap.id),
-        &state.config.omajinai,
-        &beatmap,
-    )
-    .await
-    .is_err()
+    if ensure_local_osu_file(&state.storage, &state.config.omajinai, &beatmap)
+        .await
+        .is_err()
     {
         return (
             StatusCode::NOT_FOUND,

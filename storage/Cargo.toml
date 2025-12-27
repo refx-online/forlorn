@@ -2,3 +2,8 @@
 name = "storage"
 version = "0.1.0"
 edition = "2024"
+
+[dependencies]
+cloudflare-r2-rs = "0.6.8"
+
+anyhow = { workspace = true }

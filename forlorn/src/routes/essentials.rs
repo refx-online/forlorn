@@ -1,9 +1,9 @@
 use axum::{
+    body::Bytes,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
 };
-use axum_extra::response::file_stream::FileStream;
 
 use crate::{
     dto::friends::GetFriends, models::User, repository, state::AppState,
@@ -53,10 +53,8 @@ pub async fn get_updated_beatmap(
             .into_response();
     }
 
-    let file = state.storage.beatmap_file(beatmap.id);
-
-    match FileStream::from_path(file).await {
-        Ok(osu) => osu.into_response(),
+    match state.storage.load_beatmap(beatmap.id).await {
+        Ok(beatmap) => Bytes::from(beatmap).into_response(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
 }
@@ -75,10 +73,8 @@ pub async fn get_osz(
             .into_response();
     }
 
-    let file = state.storage.osz_file(mapset_id);
-
-    match FileStream::from_path(file).await {
-        Ok(osz) => osz.into_response(),
+    match state.storage.load_osz(mapset_id).await {
+        Ok(osz) => Bytes::from(osz).into_response(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
 }
