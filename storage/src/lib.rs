@@ -74,15 +74,17 @@ impl Storage {
         format!("ss/{name_with_ext}")
     }
 
-    pub async fn save_beatmap(&self, beatmap_id: i32, data: &[u8]) -> Result<()> {
-        if let Some(r2) = &self.r2 {
-            r2.upload(
-                &self.beatmap_key(beatmap_id),
-                data,
-                None,
-                Some("text/plain"),
-            )
-            .await;
+    pub async fn save_beatmap(&self, beatmap_id: i32, data: &[u8], exists: bool) -> Result<()> {
+        if !exists {
+            if let Some(r2) = &self.r2 {
+                r2.upload(
+                    &self.beatmap_key(beatmap_id),
+                    data,
+                    None,
+                    Some("text/plain"),
+                )
+                .await;
+            }
         }
 
         // since omajinai still uses local path

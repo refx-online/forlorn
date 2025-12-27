@@ -41,7 +41,7 @@ pub async fn ensure_local_osu_file(
     } else {
         match storage.load_beatmap(beatmap.id).await {
             Ok(bytes) if !bytes.is_empty() => {
-                let _ = storage.save_beatmap(beatmap.id, &bytes).await;
+                let _ = storage.save_beatmap(beatmap.id, &bytes, true).await;
 
                 bytes
             },
@@ -52,7 +52,7 @@ pub async fn ensure_local_osu_file(
                     beatmap.id
                 );
                 let bytes = fetch_beatmap(config, beatmap.id).await?;
-                let _ = storage.save_beatmap(beatmap.id, &bytes).await;
+                let _ = storage.save_beatmap(beatmap.id, &bytes, false).await;
 
                 bytes
             },

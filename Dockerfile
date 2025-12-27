@@ -8,7 +8,7 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
 
-ENV RUSTFLAGS="-C target-cpu=native -C link-arg=-s"
+ENV RUSTFLAGS="-C target-cpu=native -C target-feature=+crt-static -C link-arg=-static"
 
 # depend on musl since im still at 22.04
 # and i dont have glibc_2.39
