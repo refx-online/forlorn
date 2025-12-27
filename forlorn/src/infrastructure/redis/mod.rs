@@ -32,11 +32,9 @@ pub async fn create_connection(
     let connection = client.get_multiplexed_async_connection().await?;
     let pubsub_connection = client.get_async_pubsub().await?;
 
-    let lock_manager = LockManager::new(vec![redis_url]);
-
     Ok((
         Arc::new(Mutex::new(connection)),
         Arc::new(Mutex::new(pubsub_connection)),
-        lock_manager,
+        LockManager::new(vec![redis_url]),
     ))
 }
