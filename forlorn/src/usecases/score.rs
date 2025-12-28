@@ -298,11 +298,42 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
         }
 
         if score.timewarp_value > 0.0 {
-            let timewarp_value_contribution = (score.timewarp_value - 150.0) / 100.0;
-            let timewarp_value_normalized = timewarp_value_contribution.clamp(-1.0, 1.0);
+            let timewarp_speed = score.timewarp_value / 100.0;
 
-            xp += timewarp_value_normalized * timewarp_weight;
-        };
+            let expected_speed = if score.mods().contains(Mods::DOUBLETIME) || score.mods().contains(Mods::NIGHTCORE) {
+                1.5
+            } else if score.mods().contains(Mods::HALFTIME) {
+                0.75
+            } else {
+                1.0
+            };
+
+            let timewarp_deviation = timewarp_speed - expected_speed;
+
+            const TIMEWARP_MIN: f32 = 0.9;
+
+            let timewarp_normalized = if timewarp_deviation.abs() < 0.01 {
+                0.0
+            } else if timewarp_deviation > 0.0 {
+                // +0.1 (10% faster) = +0.2, +0.5 (50% faster) = +0.5, +1.0 = +1.0
+                (timewarp_deviation * 2.0).clamp(0.0, 1.0)
+            } else {
+                let actual_slowdown = (expected_speed - timewarp_speed).max(0.0);
+                let max_possible_slowdown = (expected_speed - TIMEWARP_MIN).max(0.0);
+
+                if actual_slowdown > 0.0 && max_possible_slowdown > 0.0 {
+                    // NM (1.0->0.9): 0.1/0.1 = 100% of possible = -0.5
+                    // DT (1.5->0.9): 0.6/0.6 = 100% of possible = -0.5
+                    // DT (1.5->1.2): 0.3/0.6 = 50% of possible = -0.25
+                    // yes i pulled this formula out of my ass
+                    -(actual_slowdown / max_possible_slowdown).min(1.0) * 0.5
+                } else {
+                    0.0
+                }
+            };
+
+            xp += timewarp_normalized * timewarp_weight;
+        }
 
         if score.uses_cs_changer {
             let cs_reduction = if score.mods().contains(Mods::HARDROCK) {
