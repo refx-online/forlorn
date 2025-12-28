@@ -5,7 +5,7 @@ use webhook::{Author, Embed, Footer, Thumbnail, Webhook};
 
 use crate::{
     config::OmajinaiConfig,
-    constants::{GameMode, Grade, SubmissionStatus},
+    constants::{GameMode, Grade, Mods, SubmissionStatus},
     dto::submission::ScoreSubmission,
     infrastructure::{
         database::DbPoolManager,
@@ -202,26 +202,36 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
         ar_weight,
         aim_weight,
         timewarp_weight,
-        cs_weight,
-        hd_weight,
-        perfect_weight,
+        cs_penalty_multiplier,
+        hd_penalty_multiplier,
+        perfect_multiplier,
     ) = (
-        75.0, 50.0, 25.0, 60.0, 50.0, 25.0, 25.0, 20.0, 20.0, 10.0, 50.0,
+        75.0,
+        50.0,
+        25.0,
+        60.0,
+        50.0,
+        25.0,
+        25.0,
+        20.0,
+        0.15,
+        0.10,
+        1.25,
     );
 
-    let grade_weight = match score.grade() {
-        Grade::XH => 170.0,
-        Grade::SH => 150.0,
-        Grade::X => 120.0,
-        Grade::S => 100.0,
-        Grade::A => 60.0,
-        Grade::B => 40.0,
-        Grade::C => 20.0,
-        Grade::D => 10.0,
-        _ => 0.0,
+    let grade_multiplier = match score.grade() {
+        Grade::XH => 1.70,
+        Grade::SH => 1.50,
+        Grade::X => 1.35,
+        Grade::S => 1.20,
+        Grade::A => 1.10,
+        Grade::B => 1.05,
+        Grade::C => 1.02,
+        Grade::D => 1.00,
+        _ => 1.00,
     };
 
-    let status_weight = match score.status() {
+    let status_bonus = match score.status() {
         SubmissionStatus::Best => 50.0,
         SubmissionStatus::Submitted => 20.0,
         _ => 0.0,
@@ -295,21 +305,21 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
         };
 
         if score.uses_cs_changer {
-            xp -= cs_weight;
+            xp *= 1.0 - cs_penalty_multiplier;
         }
 
-        if score.uses_hd_remover {
-            xp -= hd_weight;
+        if score.uses_hd_remover && score.mods().contains(Mods::HIDDEN) {
+            xp *= 1.0 - hd_penalty_multiplier;
         }
     }
 
     if score.perfect {
-        xp += perfect_weight;
+        xp *= perfect_multiplier;
     }
 
-    xp += grade_weight;
+    xp *= grade_multiplier;
 
-    xp += status_weight;
+    xp += status_bonus;
 
     xp.max(0.0)
 }

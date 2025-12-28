@@ -294,12 +294,11 @@ pub async fn submit_score(
                 // And I said to her
                 // To hold back each other's true fate
                 // Is not of our nature
-                // Let's be mature
+                let _ = notify::notify(&r, user.id, "Let's be mature").await;
                 // Maybe you weren't made for me
                 // Nor I for you
                 // But I'd be damn lying
                 // If I think that that's true
-                let _ = notify::notify(&r, user.id, "Let's be mature.").await;
             });
         }
 
@@ -435,7 +434,6 @@ pub async fn submit_score(
             }
 
             if beatmap.awards_ranked_pp() && score.status == SubmissionStatus::Best.as_i32() {
-                // TODO: i think i need to place prev_best on score models since i frequently call this
                 let prev_best =
                     repository::score::fetch_best(&state.db, user.id, &beatmap.md5, score.mode)
                         .await
@@ -516,6 +514,8 @@ pub async fn submit_score(
             });
         }
 
+        // we tell bancho that we have a new score
+        // for "recent score"
         {
             let r = state.redis.clone();
             tokio::spawn(async move {
