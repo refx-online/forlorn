@@ -46,6 +46,11 @@ pub async fn mark_as_read(
             let _ =
                 repository::user::mark_conversation_as_read(&state.db, target.id, user.id).await;
         });
+
+        tracing::info!(
+            "{} marked conversation as read to {target_name}",
+            user.name()
+        )
     }
 
     (StatusCode::OK, b"").into_response()

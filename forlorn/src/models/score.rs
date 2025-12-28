@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use sqlx::{FromRow, types::Json};
 
 use super::user::User;
 use crate::constants::{GameMode, Grade, Mods, SubmissionStatus};
@@ -53,6 +53,11 @@ pub struct Score {
     pub timewarp_value: f32,
     #[sqlx(rename = "hdr")]
     pub uses_hd_remover: bool,
+
+    pub aim_assist_type: i8,
+
+    #[sqlx(default)]
+    pub maple_values: Option<Json<MapleAimAssistValues>>,
 
     pub pinned: bool,
 
@@ -119,7 +124,21 @@ impl Score {
             hypothetical_pp: 0.0,
             stars: 0.0,
             quit: false,
+
+            aim_assist_type: 0,
+            maple_values: None,
         })
+    }
+
+    pub fn aim_assist_type(&self) -> AimAssistType {
+        let aa_type = AimAssistType::from_i8(self.aim_assist_type);
+
+        // just incase
+        if aa_type == AimAssistType::None && self.uses_aim_correction {
+            AimAssistType::Correction
+        } else {
+            aa_type
+        }
     }
 
     pub fn mode(&self) -> GameMode {
@@ -193,5 +212,32 @@ impl Score {
         }
 
         total_hits as u32
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MapleAimAssistValues {
+    pub v3powerval: Option<f32>,
+    pub v3sliderpowerval: Option<f32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AimAssistType {
+    None,
+    Correction,
+    MapleAimAssist,
+}
+
+impl AimAssistType {
+    pub fn from_i8(value: i8) -> Self {
+        match value {
+            1 => Self::Correction,
+            2 => Self::MapleAimAssist,
+            _ => Self::None,
+        }
+    }
+
+    pub fn to_i8(self) -> i8 {
+        self as i8
     }
 }

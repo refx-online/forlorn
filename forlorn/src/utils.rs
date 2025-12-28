@@ -9,7 +9,7 @@ use tokio::signal::{
 
 use crate::{
     dto::{error::GetError, screenshot::ScreenshotUpload, submission::ScoreSubmission},
-    models::{Beatmap, LeaderboardScore, PersonalBest, Score, Stats, User},
+    models::{Beatmap, LeaderboardScore, MapleAimAssistValues, PersonalBest, Score, Stats, User},
     repository,
     state::AppState,
     usecases::{achievement::check_and_unlock_achievements, leaderboard::format_score_line},
@@ -60,6 +60,10 @@ pub fn build_submission(
     let get_i32 = |key: &str| -> i32 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0) };
     let get_f32 =
         |key: &str| -> f32 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0.0) };
+    let get_i8 = |key: &str| -> i8 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0) };
+
+    let maple_values =
+        get_string("maple").and_then(|s| serde_json::from_str::<MapleAimAssistValues>(&s).ok());
 
     Some(ScoreSubmission {
         exited_out: get_string("x"),
@@ -75,13 +79,14 @@ pub fn build_submission(
         client_hash_b64: fields.get("s").cloned()?,
         aim_value: get_i32("acval"),
         ar_value: get_f32("arval"),
-        aim: get_string("ac"),
+        aim_assist_type: get_i8("aatype"),
         arc: get_string("ar"),
         hdr: get_string("hdrem"),
         cs: get_string("cs"),
         tw: get_string("tw"),
         twval: get_f32("twval"),
         refx: get_string("refx"),
+        maple_values,
         score_data_b64,
         replay_file,
     })

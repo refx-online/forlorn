@@ -14,6 +14,6 @@ pub use clan::Clan;
 pub use error::ClientError;
 pub use favourite::Favourites;
 pub use leaderboard::{LeaderboardScore, PersonalBest};
-pub use score::Score;
+pub use score::{AimAssistType, MapleAimAssistValues, Score};
 pub use stats::Stats;
 pub use user::User;

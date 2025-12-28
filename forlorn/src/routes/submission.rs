@@ -194,19 +194,21 @@ pub async fn submit_score(
             .incr("score.invalid_cheat_values", ["status:ok"]);
 
         let webhook = Webhook::new(&state.config.webhook.debug).content(format!(
-            "[{}] {} Overcheat? (malformed cheat value) [ac={}|tw={}|cs={}]",
+            "[{}] {} Overcheat? (malformed cheat value) [ac={}|aa={:?}|tw={}|cs={}]",
             score.mode().as_str(),
             user.name(),
             score.aim_correction_value,
+            score.maple_values,
             score.timewarp_value,
             score.uses_cs_changer
         ));
 
         tracing::warn!(
-            "[{}] {} submitted a malformed cheat value [ac={}|tw={}|cs={}]",
+            "[{}] {} submitted a malformed cheat value [ac={}|aa={:?}|tw={}|cs={}]",
             score.mode().as_str(),
             user.name(),
             score.aim_correction_value,
+            score.maple_values,
             score.timewarp_value,
             score.uses_cs_changer
         );

@@ -1,6 +1,7 @@
 use anyhow::Result;
 use base64::prelude::*;
 use simple_rijndael::{Errors, impls::RijndaelCbc, paddings::Pkcs7Padding};
+use sqlx::types::Json;
 use webhook::{Author, Embed, Footer, Thumbnail, Webhook};
 
 use crate::{
@@ -11,7 +12,7 @@ use crate::{
         database::DbPoolManager,
         omajinai::{PerformanceRequest, calculate_pp},
     },
-    models::{Beatmap, Score, User},
+    models::{AimAssistType, Beatmap, Score, User},
     repository,
     utils::{fmt_f, fmt_n},
 };
@@ -379,7 +380,7 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
 }
 
 pub fn consume_cheat_values(score: &mut Score, fields: &ScoreSubmission) {
-    score.uses_aim_correction = fields.aim();
+    score.uses_aim_correction = fields.aim_assist_type == AimAssistType::Correction.to_i8();
     score.aim_correction_value = fields.aim_value;
     score.uses_ar_changer = fields.arc();
     score.ar_changer_value = fields.ar_value;
@@ -387,12 +388,19 @@ pub fn consume_cheat_values(score: &mut Score, fields: &ScoreSubmission) {
     score.timewarp_value = fields.twval;
     score.uses_cs_changer = fields.cs();
     score.uses_hd_remover = fields.hdr();
+
+    score.aim_assist_type = fields.aim_assist_type;
+    if let Some(maple) = fields.maple_values.clone() {
+        score.maple_values = Some(Json(maple));
+    }
 }
 
 pub fn validate_cheat_values(score: &Score) -> bool {
     match score.mode() {
         GameMode::CHEAT_OSU => {
-            if score.uses_aim_correction && score.aim_correction_value > 60 {
+            if (score.uses_aim_correction || score.aim_assist_type() == AimAssistType::Correction)
+                && score.aim_correction_value > 60
+            {
                 return false;
             }
             if score.uses_timewarp || score.timewarp_value != -1.0 {
@@ -401,14 +409,30 @@ pub fn validate_cheat_values(score: &Score) -> bool {
             if score.uses_cs_changer {
                 return false;
             }
+            if let Some(maple) = &score.maple_values
+                && let Some(power) = maple.0.v3powerval
+                && let Some(slider) = maple.0.v3sliderpowerval
+                && (power > 1.0 || slider > 1.0)
+            {
+                return false;
+            }
 
             true
         },
         GameMode::CHEAT_CHEAT_OSU => {
-            if score.uses_aim_correction && score.aim_correction_value > 80 {
+            if (score.uses_aim_correction || score.aim_assist_type() == AimAssistType::Correction)
+                && score.aim_correction_value > 80
+            {
                 return false;
             }
             if score.uses_timewarp && score.timewarp_value < 90.0 {
+                return false;
+            }
+            if let Some(maple) = &score.maple_values
+                && let Some(power) = maple.0.v3powerval
+                && let Some(slider) = maple.0.v3sliderpowerval
+                && (power > 1.0 || slider > 1.0)
+            {
                 return false;
             }
 

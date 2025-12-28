@@ -1,6 +1,9 @@
 #![allow(unused)]
 
 use axum::body::Bytes;
+use serde::Deserialize;
+
+use crate::models::MapleAimAssistValues;
 
 #[derive(Debug, Clone)]
 pub struct ScoreHeader {
@@ -35,15 +38,16 @@ pub struct ScoreSubmission {
     pub client_hash_b64: Bytes,
 
     // refx original sin
+    pub aim_assist_type: i8,
     pub aim_value: i32,
     pub ar_value: f32,
-    pub aim: Option<String>,
     pub arc: Option<String>,
     pub hdr: Option<String>,
     pub cs: Option<String>,
     pub tw: Option<String>,
     pub twval: f32, // why the fuck is this a float?
     pub refx: Option<String>,
+    pub maple_values: Option<MapleAimAssistValues>,
     pub score_data_b64: Vec<u8>,
     pub replay_file: Vec<u8>,
 }
@@ -57,10 +61,6 @@ impl ScoreSubmission {
 
     pub fn exited_out(&self) -> bool {
         Self::is_true(&self.exited_out)
-    }
-
-    pub fn aim(&self) -> bool {
-        Self::is_true(&self.aim)
     }
 
     pub fn arc(&self) -> bool {

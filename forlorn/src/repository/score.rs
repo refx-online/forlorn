@@ -95,8 +95,8 @@ pub async fn insert(db: &DbPoolManager, score: &Score, beatmap: &Beatmap) -> Res
         "insert into scores (
          map_md5, map_status, score, xp_gained, pp, acc, max_combo, mods, n300, n100, n50, nmiss, ngeki, nkatu, 
          grade, status, mode, play_time, time_elapsed, client_flags, userid, perfect, online_checksum, 
-         aim_value, ar_value, aim, arc, cs, tw, twval, hdr, pinned
-        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+         aim_assist_type, maple_values, aim_value, ar_value, aim, arc, cs, tw, twval, hdr, pinned
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
         .bind(&beatmap.md5)
         .bind(beatmap.status)
@@ -121,6 +121,8 @@ pub async fn insert(db: &DbPoolManager, score: &Score, beatmap: &Beatmap) -> Res
         .bind(score.userid)
         .bind(score.perfect)
         .bind(&score.online_checksum)
+        .bind(score.aim_assist_type)
+        .bind(&score.maple_values)
         .bind(score.aim_correction_value)
         .bind(score.ar_changer_value)
         .bind(score.uses_aim_correction)
