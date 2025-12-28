@@ -24,7 +24,6 @@ impl Storage {
         cloudflare_kv_client_id: &str,
         cloudflare_kv_secret: &str,
     ) -> Self {
-        // using r2 here since amazon doesn't like my fucking credit card
         let r2 = if bucket_name != "none" && !bucket_name.is_empty() {
             Some(Arc::new(
                 R2Manager::new(

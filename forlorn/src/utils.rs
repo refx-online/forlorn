@@ -122,7 +122,9 @@ pub fn build_error_upload(fields: HashMap<String, Bytes>) -> Option<GetError> {
         config: get_string("config")?,
         exe_hash: get_string("exehash")?,
         version: get_string("version")?,
-        screenshot_data: fields.get("ss").map(|b| b.to_vec()),
+        screenshot_data: fields
+            .get("ss")
+            .and_then(|b| if b.is_empty() { None } else { Some(b.to_vec()) }),
     })
 }
 
