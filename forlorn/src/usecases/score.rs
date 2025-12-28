@@ -202,7 +202,7 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
         ar_weight,
         aim_weight,
         timewarp_weight,
-        cs_penalty_multiplier,
+        cs_base_penalty,
         hd_penalty_multiplier,
         perfect_multiplier,
     ) = (
@@ -214,7 +214,7 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
         25.0,
         25.0,
         20.0,
-        0.15,
+        0.10,
         0.10,
         1.25,
     );
@@ -305,7 +305,30 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
         };
 
         if score.uses_cs_changer {
-            xp *= 1.0 - cs_penalty_multiplier;
+            let cs_reduction = if score.mods().contains(Mods::HARDROCK) {
+                1.0 
+            } else {
+                // ez/nm
+                // im not sure why the cs changer logic that way?
+                0.77
+            };
+            
+            // lower CS = bigger circles = easier to hit
+            // penalty is larger when reducing already-low circle size
+            let cs_difficulty_factor = if beatmap.cs > 0.0 {
+                // normalize: circle size 2-7 range, penalty increases as original circle size decreases
+                let normalized_cs = ((beatmap.cs - 2.0) / 5.0).clamp(0.0, 1.0);
+
+                // lower original CS = higher penalty multiplier
+                let reduction_impact = cs_reduction / beatmap.cs;
+
+                1.0 - (normalized_cs * 0.5 + 0.5) * reduction_impact
+            } else {
+                1.0 - cs_base_penalty
+            };
+
+            let cs_penalty_multiplier = cs_difficulty_factor.clamp(0.80, 0.95);
+            xp *= cs_penalty_multiplier;
         }
 
         if score.uses_hd_remover && score.mods().contains(Mods::HIDDEN) {
