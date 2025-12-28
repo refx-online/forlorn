@@ -44,7 +44,7 @@ pub async fn mark_as_read(
 
         tokio::spawn(async move {
             let _ =
-                repository::user::mark_conversation_as_read(&state.db, user.id, target.id).await;
+                repository::user::mark_conversation_as_read(&state.db, target.id, user.id).await;
         });
     }
 

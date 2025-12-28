@@ -143,6 +143,25 @@ pub async fn submit_score(
         return (StatusCode::OK, b"error: no").into_response();
     }
 
+    if !submission.refx() && osu_path_md5 == REFX_CURRENT_CLIENT_HASH {
+        // we can safely assume that this player is
+        // trying to spoof the client hash
+        // since there's no `refx` flag
+
+        {
+            let r = state.redis.clone();
+            tokio::spawn(async move {
+                let _ = restrict::restrict(
+                    &r,
+                    user.id,
+                    &format!(
+                        "Trying to spoof the client hash ({osu_path_md5} == {REFX_CURRENT_CLIENT_HASH})"
+                    ),
+                ).await;
+            });
+        }
+    }
+
     let beatmap =
         match repository::beatmap::fetch_by_md5(&state.config, &state.db, &score_header.map_md5)
             .await
@@ -387,20 +406,12 @@ pub async fn submit_score(
                     .metrics
                     .incr("score.exceeds_pp_cap_threshold", ["status:ok"]);
 
-                tracing::warn!(
-                    "[{}] {} restricted for suspicious pp gain ({}pp > {}pp)",
-                    score.mode().as_str(),
-                    user.name(),
-                    score.pp.round(),
-                    threshold,
-                );
-
                 {
                     let r = state.redis.clone();
                     let _ = restrict::restrict(
                         &r,
                         user.id,
-                        &format!("suspicious pp gain ({}pp)", score.pp.round(),),
+                        &format!("suspicious pp gain ({}pp > {threshold})", score.pp.round(),),
                     )
                     .await;
                 }
