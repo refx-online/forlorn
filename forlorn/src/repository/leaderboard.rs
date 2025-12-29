@@ -6,7 +6,7 @@ use crate::{
 
 fn cheat_columns(is_refx: bool) -> &'static str {
     if is_refx {
-        ", s.aim_assist_type, s.maple_values, s.aim_value, s.ar_value, s.arc, s.cs, s.tw, s.twval, s.hdr"
+        ", s.aim_assist_type, s.maple_values, s.aim_value, s.ar_value, s.arc, s.cs, s.tw, s.twval, s.hdr, s.score"
     } else {
         // of course.
         ", NULL as aim_assist_type, \
@@ -17,7 +17,8 @@ fn cheat_columns(is_refx: bool) -> &'static str {
            NULL as cs, \
            NULL as tw, \
            NULL as twval, \
-           NULL as hdr"
+           NULL as hdr, \
+           NULL as score"
     }
 }
 

@@ -36,6 +36,9 @@ pub struct LeaderboardScore {
     pub timewarp_value: Option<f32>,
     #[sqlx(rename = "hdr")]
     pub uses_hd_remover: Option<bool>,
+    #[sqlx(rename = "score")]
+    // because of legacy score calculation, we need an actual score to calculate the misses.
+    pub actual_score: Option<i32>,
 }
 
 impl LeaderboardScore {

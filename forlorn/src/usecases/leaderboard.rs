@@ -13,7 +13,7 @@ pub fn format_score_line(score: &LeaderboardScore, rank: i32, is_refx: bool) -> 
         };
 
         format!(
-            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|1|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+            "{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|1|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             score.id,
             score.name,
             score.preferred_metric.round() as i64,
@@ -38,6 +38,7 @@ pub fn format_score_line(score: &LeaderboardScore, rank: i32, is_refx: bool) -> 
             score.timewarp_value.unwrap_or(0.0),
             score.uses_hd_remover.unwrap_or(false) as i32,
             maple_json,
+            score.actual_score.unwrap_or(0),
         )
     } else {
         format!(
