@@ -74,6 +74,8 @@ impl Storage {
     }
 
     pub async fn save_beatmap(&self, beatmap_id: i32, data: &[u8], exists: bool) -> Result<()> {
+        // chances are, .osu does not exists on the bucket
+        // but exists on local.
         if !exists && let Some(r2) = &self.r2 {
             r2.upload(
                 &self.beatmap_key(beatmap_id),

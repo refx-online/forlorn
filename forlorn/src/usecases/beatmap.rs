@@ -37,10 +37,19 @@ pub async fn ensure_local_osu_file(
 ) -> Result<bool> {
     let osu_file_path = storage.beatmap_file(beatmap.id);
     let osu_file_bytes = if osu_file_path.exists() {
-        fs::read(&osu_file_path)?
+        let bytes = fs::read(&osu_file_path)?;
+        if !is_valid_osu_format(&bytes) {
+            let _ = fs::remove_file(&osu_file_path);
+            return Ok(false);
+        }
+
+        bytes
     } else {
         match storage.load_beatmap(beatmap.id).await {
             Ok(bytes) if !bytes.is_empty() => {
+                if !is_valid_osu_format(&bytes) {
+                    return Ok(false);
+                }
                 let _ = storage.save_beatmap(beatmap.id, &bytes, true).await;
 
                 bytes
@@ -64,4 +73,10 @@ pub async fn ensure_local_osu_file(
     let osu_file_md5 = format!("{:x}", md5_hasher.finalize());
 
     Ok(osu_file_md5 == beatmap.md5)
+}
+
+fn is_valid_osu_format(bytes: &[u8]) -> bool {
+    let header = String::from_utf8_lossy(&bytes[..bytes.len().min(100)]);
+
+    header.to_lowercase().contains("osu file format v14")
 }
