@@ -76,6 +76,7 @@ pub fn build_submission(
         score_time: get_i32("st"),
         password_md5: get_string("pass")?,
         osu_version: get_string("osuver")?,
+        auth_hash: get_string("cl"),
         client_hash_b64: fields.get("s").cloned()?,
         aim_value: get_i32("acval"),
         ar_value: get_f32("arval"),

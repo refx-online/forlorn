@@ -12,7 +12,7 @@ use axum::{
 use webhook::Webhook;
 
 use crate::{
-    constants::{Grade, REFX_CURRENT_CLIENT_HASH, RankedStatus, SubmissionStatus},
+    constants::{Grade, REFX_AUTH_HASH, REFX_CURRENT_CLIENT_HASH, RankedStatus, SubmissionStatus},
     dto::submission::{ScoreHeader, ScoreSubmission},
     infrastructure::redis::publish::{announce, notify, refresh_stats, restrict, score},
     models::{Score, User},
@@ -131,6 +131,27 @@ pub async fn submit_score(
             user.name(),
             osu_path_md5,
             REFX_CURRENT_CLIENT_HASH,
+        );
+
+        {
+            let r = state.redis.clone();
+            tokio::spawn(async move {
+                let _ = notify::notify(&r, user.id, "Please update your client!").await;
+            });
+        }
+
+        return (StatusCode::OK, b"error: no").into_response();
+    }
+
+    // same as above
+    if submission.refx() && submission.auth_hash() != REFX_AUTH_HASH {
+        let _ = state.metrics.incr("score.auth_hash_flagged", ["status:ok"]);
+
+        tracing::warn!(
+            "{} submitted a score in outdated/modified re;fx client! ({:?} != {})",
+            user.name(),
+            submission.auth_hash,
+            REFX_AUTH_HASH,
         );
 
         {

@@ -50,6 +50,7 @@ pub struct ScoreSubmission {
     pub maple_values: Option<MapleAimAssistValues>,
     pub score_data_b64: Vec<u8>,
     pub replay_file: Vec<u8>,
+    pub auth_hash: Option<String>,
 }
 
 impl ScoreSubmission {
@@ -81,5 +82,9 @@ impl ScoreSubmission {
 
     pub fn refx(&self) -> bool {
         Self::is_true(&self.refx)
+    }
+
+    pub fn auth_hash(&self) -> &str {
+        if let Some(hash) = &self.auth_hash { hash } else { "" }
     }
 }

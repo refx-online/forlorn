@@ -2,14 +2,14 @@ run:
 	docker run \
 		--network=host \
 		--env-file=.env \
-		-v refxpy_data:/srv/root/.data \
+		-v meat-my-beat-i_data:/srv/root/.data \
 		-it forlorn:latest
 
 run-bg:
 	docker run \
 		--network=host \
 		--env-file=.env \
-		-v refxpy_data:/srv/root/.data \
+		-v meat-my-beat-i_data/srv/root/.data \
 		-d forlorn:latest
 
 build:
