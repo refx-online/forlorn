@@ -2,9 +2,6 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct GetCalculateMap {
-    #[serde(rename = "k")]
-    pub api_key: String,
-
     #[serde(rename = "id")]
     pub map_id: i32,
 
