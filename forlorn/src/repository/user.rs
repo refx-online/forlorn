@@ -12,7 +12,7 @@ pub async fn fetch_by_name(db: &DbPoolManager, username: &str) -> Result<Option<
         "select id, name, safe_name, priv as privilege, pw_bcrypt, country, silence_end, donor_end, 
                 creation_time, latest_activity, clan_id, clan_priv, preferred_mode, 
                 play_style, custom_badge_name, custom_badge_icon, userpage_content, 
-                api_key, whitelist, preferred_metric from users where name = ?"
+                api_key from users where name = ?"
     )
         .bind(username)
         .fetch_optional(db.as_ref())
@@ -26,7 +26,7 @@ pub async fn fetch_by_id(db: &DbPoolManager, id: &i32) -> Result<Option<User>> {
         "select id, name, safe_name, priv as privilege, pw_bcrypt, country, silence_end, donor_end, 
                 creation_time, latest_activity, clan_id, clan_priv, preferred_mode, 
                 play_style, custom_badge_name, custom_badge_icon, userpage_content, 
-                api_key, whitelist, preferred_metric from users where id = ?"
+                api_key from users where id = ?"
     )
         .bind(id)
         .fetch_optional(db.as_ref())
@@ -40,7 +40,7 @@ pub async fn fetch_by_api_key(db: &DbPoolManager, api_key: &str) -> Result<Optio
         "select id, name, safe_name, priv as privilege, pw_bcrypt, country, silence_end, donor_end, 
                 creation_time, latest_activity, clan_id, clan_priv, preferred_mode, 
                 play_style, custom_badge_name, custom_badge_icon, userpage_content, 
-                api_key, whitelist, preferred_metric from users where api_key = ?"
+                api_key from users where api_key = ?"
     )
         .bind(api_key)
         .fetch_optional(db.as_ref())
