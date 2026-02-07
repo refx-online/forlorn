@@ -1,7 +1,6 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(i32)]
 pub enum SubmissionStatus {
-    Quit = -1,
     Failed = 0,
     Submitted = 1,
     Best = 2,
@@ -14,7 +13,6 @@ impl SubmissionStatus {
 
     pub fn from_i32(status: i32) -> Self {
         match status {
-            -1 => SubmissionStatus::Quit,
             0 => SubmissionStatus::Failed,
             1 => SubmissionStatus::Submitted,
             2 => SubmissionStatus::Best,
@@ -24,7 +22,6 @@ impl SubmissionStatus {
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            SubmissionStatus::Quit => "Quit",
             SubmissionStatus::Failed => "Failed",
             SubmissionStatus::Submitted => "Submitted",
             SubmissionStatus::Best => "Best",
