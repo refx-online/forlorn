@@ -24,8 +24,7 @@ pub async fn fetch_leaderboard_scores(
          inner join users u on u.id = s.userid \
          left join clans c on c.id = u.clan_id \
          where s.map_md5 = ? and s.status = 2 \
-         and (u.priv & 1 or u.id = ?) and s.mode = ? \
-         and s.online_checksum != 'lazer_score'"
+         and (u.priv & 1 or u.id = ?) and s.mode = ?"
         .to_string();
 
     let (query_with_filter, needs_friends_binding) = match leaderboard_type {
