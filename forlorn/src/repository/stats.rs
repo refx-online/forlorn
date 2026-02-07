@@ -13,7 +13,7 @@ pub async fn fetch_by_user_mode(
     mode: i32,
 ) -> Result<Option<Stats>> {
     let mut stats = match sqlx::query_as::<_, Stats>(
-        "select id, mode, tscore, rscore, pp, plays, playtime, acc, max_combo, total_hits, replay_views, xh_count, x_count, sh_count, s_count, a_count, xp \
+        "select id, mode, tscore, rscore, pp, plays, playtime, acc, max_combo, total_hits, replay_views, xh_count, x_count, sh_count, s_count, a_count \
          from stats where id = ? and mode = ?"
     )
     .bind(userid)
@@ -106,7 +106,7 @@ pub async fn increment_replay_views(db: DbPoolManager, user_id: i32, mode: i32) 
 
 pub async fn save(db: &DbPoolManager, stats: &Stats) -> Result<()> {
     sqlx::query(
-        "update stats set tscore = ?, rscore = ?, pp = ?, plays = ?, playtime = ?, acc = ?, max_combo = ?, total_hits = ?, replay_views = ?, xh_count = ?, x_count = ?, sh_count = ?, s_count = ?, a_count = ?, xp = ? where id = ? and mode = ?"
+        "update stats set tscore = ?, rscore = ?, pp = ?, plays = ?, playtime = ?, acc = ?, max_combo = ?, total_hits = ?, replay_views = ?, xh_count = ?, x_count = ?, sh_count = ?, s_count = ?, a_count = ? where id = ? and mode = ?"
     )
     .bind(stats.tscore)
     .bind(stats.rscore)
@@ -122,7 +122,6 @@ pub async fn save(db: &DbPoolManager, stats: &Stats) -> Result<()> {
     .bind(stats.sh_count)
     .bind(stats.s_count)
     .bind(stats.a_count)
-    .bind(stats.xp)
     .bind(stats.id)
     .bind(stats.mode)
     .execute(db.as_ref())
