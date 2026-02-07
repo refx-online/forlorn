@@ -9,10 +9,9 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
-use webhook::Webhook;
 
 use crate::{
-    constants::{Grade, REFX_AUTH_HASH, REFX_CURRENT_CLIENT_HASH, RankedStatus, SubmissionStatus},
+    constants::{Grade, RankedStatus, SubmissionStatus},
     dto::submission::{ScoreHeader, ScoreSubmission},
     infrastructure::redis::publish::{announce, notify, refresh_stats, restrict, score},
     models::{Score, User},
@@ -23,8 +22,7 @@ use crate::{
         password::verify_password,
         score::{
             calculate_accuracy, calculate_performance, calculate_placement, calculate_status,
-            calculate_xp, consume_cheat_values, decrypt_score_data, first_place_webhook,
-            update_any_preexisting_personal_best, validate_cheat_values,
+            decrypt_score_data, first_place_webhook, update_any_preexisting_personal_best,
         },
         stats::{get_computed_playtime, recalculate},
     },
@@ -96,7 +94,7 @@ pub async fn submit_score(
         Err(response) => return response,
     };
 
-    let (score_data, osu_path_md5) = match decrypt_score_data(
+    let (score_data, _) = match decrypt_score_data(
         &submission.score_data_b64,
         &submission.client_hash_b64,
         &submission.iv_b64,
@@ -117,72 +115,6 @@ pub async fn submit_score(
             Err(response) => return response,
         };
 
-    // NOTE: a small combat for the "refx" client
-    //       this shouldn't even get passed since bancho already handles this?
-    //       but for extra safety, maybe i should restrict them too?
-    //       since they most likely spoofed `GameBase.ClientHash`.
-    if submission.refx() && osu_path_md5 != REFX_CURRENT_CLIENT_HASH {
-        let _ = state
-            .metrics
-            .incr("score.client_hash_flagged", ["status:ok"]);
-
-        tracing::warn!(
-            "{} submitted a score in outdated/modified re;fx client! ({} != {})",
-            user.name(),
-            osu_path_md5,
-            REFX_CURRENT_CLIENT_HASH,
-        );
-
-        {
-            let r = state.redis.clone();
-            tokio::spawn(async move {
-                let _ = notify::notify(&r, user.id, "Please update your client!").await;
-            });
-        }
-
-        return (StatusCode::OK, b"error: no").into_response();
-    }
-
-    // same as above
-    if submission.refx() && submission.auth_hash() != REFX_AUTH_HASH {
-        let _ = state.metrics.incr("score.auth_hash_flagged", ["status:ok"]);
-
-        tracing::warn!(
-            "{} submitted a score in outdated/modified re;fx client! ({:?} != {})",
-            user.name(),
-            submission.auth_hash,
-            REFX_AUTH_HASH,
-        );
-
-        {
-            let r = state.redis.clone();
-            tokio::spawn(async move {
-                let _ = notify::notify(&r, user.id, "Please update your client!").await;
-            });
-        }
-
-        return (StatusCode::OK, b"error: no").into_response();
-    }
-
-    if !submission.refx() && osu_path_md5 == REFX_CURRENT_CLIENT_HASH {
-        // we can safely assume that this player is
-        // trying to spoof the client hash
-        // since there's no `refx` flag
-
-        {
-            let r = state.redis.clone();
-            tokio::spawn(async move {
-                let _ = restrict::restrict(
-                    &r,
-                    user.id,
-                    &format!(
-                        "Trying to spoof the client hash ({osu_path_md5} == {REFX_CURRENT_CLIENT_HASH})"
-                    ),
-                ).await;
-            });
-        }
-    }
-
     let beatmap =
         match repository::beatmap::fetch_by_md5(&state.config, &state.db, &score_header.map_md5)
             .await
@@ -199,7 +131,6 @@ pub async fn submit_score(
     score.mode = score.mode().as_i32();
     score.acc = calculate_accuracy(&score);
     score.quit = submission.exited_out();
-    consume_cheat_values(&mut score, &submission);
 
     // always update last activity no matter what
     {
@@ -209,42 +140,7 @@ pub async fn submit_score(
         });
     }
 
-    if submission.refx() && !validate_cheat_values(&score) {
-        let _ = state
-            .metrics
-            .incr("score.invalid_cheat_values", ["status:ok"]);
-
-        let webhook = Webhook::new(&state.config.webhook.debug).content(format!(
-            "[{}] {} Overcheat? (malformed cheat value) [ac={}|aa={:?}|tw={}|cs={}]",
-            score.mode().as_str(),
-            user.name(),
-            score.aim_correction_value,
-            score.maple_values,
-            score.timewarp_value,
-            score.uses_cs_changer
-        ));
-
-        tracing::warn!(
-            "[{}] {} submitted a malformed cheat value [ac={}|aa={:?}|tw={}|cs={}]",
-            score.mode().as_str(),
-            user.name(),
-            score.aim_correction_value,
-            score.maple_values,
-            score.timewarp_value,
-            score.uses_cs_changer
-        );
-
-        tokio::spawn(async move {
-            let _ = webhook.post().await;
-        });
-
-        // NOTE: it's not a good idea to return here,
-        //       we let them submit since its possibly their client's submission error.
-        //       or theres a big flaw on the client that ano (me) need to fix
-        //       god i dont want to open up rider
-    }
-
-    if !submission.refx() && score.mods().conflict() {
+    if score.mods().conflict() {
         let _ = state.metrics.incr(
             "score.mods_conflict",
             [format!("mods:{}", score.mods().as_str())],
@@ -362,8 +258,6 @@ pub async fn submit_score(
         score.time_elapsed =
             if score.passed { submission.score_time } else { submission.fail_time };
 
-        score.xp = calculate_xp(&score, &beatmap);
-
         let _ = state.metrics.incr("score.submitted", ["status:all"]);
 
         if score.status == SubmissionStatus::Best.as_i32() {
@@ -460,7 +354,6 @@ pub async fn submit_score(
         stats.plays += 1;
         stats.tscore += score.score as u64;
         stats.total_hits += score.total_hits();
-        stats.xp += score.xp.round() as i32;
 
         if score.passed && beatmap.has_leaderboard() {
             if score.max_combo as u32 > stats.max_combo {

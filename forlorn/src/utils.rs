@@ -9,7 +9,7 @@ use tokio::signal::{
 
 use crate::{
     dto::{error::GetError, screenshot::ScreenshotUpload, submission::ScoreSubmission},
-    models::{Beatmap, LeaderboardScore, MapleAimAssistValues, PersonalBest, Score, Stats, User},
+    models::{Beatmap, LeaderboardScore, PersonalBest, Score, Stats, User},
     repository,
     state::AppState,
     usecases::{achievement::check_and_unlock_achievements, leaderboard::format_score_line},
@@ -58,12 +58,6 @@ pub fn build_submission(
             .map(|b| String::from_utf8_lossy(b).to_string())
     };
     let get_i32 = |key: &str| -> i32 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0) };
-    let get_f32 =
-        |key: &str| -> f32 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0.0) };
-    let get_i8 = |key: &str| -> i8 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0) };
-
-    let maple_values =
-        get_string("maple").and_then(|s| serde_json::from_str::<MapleAimAssistValues>(&s).ok());
 
     Some(ScoreSubmission {
         exited_out: get_string("x"),
@@ -76,18 +70,7 @@ pub fn build_submission(
         score_time: get_i32("st"),
         password_md5: get_string("pass")?,
         osu_version: get_string("osuver")?,
-        auth_hash: get_string("cl"),
         client_hash_b64: fields.get("s").cloned()?,
-        aim_value: get_i32("acval"),
-        ar_value: get_f32("arval"),
-        aim_assist_type: get_i8("aatype"),
-        arc: get_string("ar"),
-        hdr: get_string("hdrem"),
-        cs: get_string("cs"),
-        tw: get_string("tw"),
-        twval: get_f32("twval"),
-        refx: get_string("refx"),
-        maple_values,
         score_data_b64,
         replay_file,
     })
@@ -213,7 +196,6 @@ pub fn build_leaderboard_response(
     scores: &[LeaderboardScore],
     personal_best: Option<PersonalBest>,
     avg_rating: f32,
-    is_refx: bool,
 ) -> String {
     let mut lines = vec![
         format!(
@@ -227,13 +209,13 @@ pub fn build_leaderboard_response(
     ];
 
     if let Some(pb) = personal_best {
-        lines.push(format_score_line(&pb.score, pb.rank, is_refx));
+        lines.push(format_score_line(&pb.score, pb.rank));
     } else {
         lines.push(String::new());
     }
 
     for (idx, score) in scores.iter().enumerate() {
-        lines.push(format_score_line(score, (idx + 1) as i32, is_refx));
+        lines.push(format_score_line(score, (idx + 1) as i32));
     }
 
     lines.join("\n")

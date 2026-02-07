@@ -3,8 +3,6 @@
 use axum::body::Bytes;
 use serde::Deserialize;
 
-use crate::models::MapleAimAssistValues;
-
 #[derive(Debug, Clone)]
 pub struct ScoreHeader {
     pub map_md5: String,
@@ -37,20 +35,8 @@ pub struct ScoreSubmission {
     pub osu_version: String,
     pub client_hash_b64: Bytes,
 
-    // refx original sin
-    pub aim_assist_type: i8,
-    pub aim_value: i32,
-    pub ar_value: f32,
-    pub arc: Option<String>,
-    pub hdr: Option<String>,
-    pub cs: Option<String>,
-    pub tw: Option<String>,
-    pub twval: f32, // why the fuck is this a float?
-    pub refx: Option<String>,
-    pub maple_values: Option<MapleAimAssistValues>,
     pub score_data_b64: Vec<u8>,
     pub replay_file: Vec<u8>,
-    pub auth_hash: Option<String>,
 }
 
 impl ScoreSubmission {
@@ -62,29 +48,5 @@ impl ScoreSubmission {
 
     pub fn exited_out(&self) -> bool {
         Self::is_true(&self.exited_out)
-    }
-
-    pub fn arc(&self) -> bool {
-        Self::is_true(&self.arc)
-    }
-
-    pub fn hdr(&self) -> bool {
-        Self::is_true(&self.hdr)
-    }
-
-    pub fn cs(&self) -> bool {
-        Self::is_true(&self.cs)
-    }
-
-    pub fn tw(&self) -> bool {
-        Self::is_true(&self.tw)
-    }
-
-    pub fn refx(&self) -> bool {
-        Self::is_true(&self.refx)
-    }
-
-    pub fn auth_hash(&self) -> &str {
-        if let Some(hash) = &self.auth_hash { hash } else { "" }
     }
 }

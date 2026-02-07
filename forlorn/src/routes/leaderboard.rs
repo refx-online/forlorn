@@ -156,8 +156,6 @@ pub async fn get_scores(
         Some(leaderboard.mods),
         Some(&user.country),
         friend_ids.as_deref(),
-        user.preferred_metric(),
-        leaderboard.is_refx(),
     )
     .await
     {
@@ -171,8 +169,6 @@ pub async fn get_scores(
             &leaderboard.map_md5,
             mode.as_i32(),
             user.id,
-            user.preferred_metric(),
-            leaderboard.is_refx(),
         )
         .await
         {
@@ -181,8 +177,7 @@ pub async fn get_scores(
                     &state.db,
                     &leaderboard.map_md5,
                     mode.as_i32(),
-                    pb.preferred_metric,
-                    user.preferred_metric(),
+                    pb.pp,
                 )
                 .await
                 .unwrap_or(0);
@@ -202,13 +197,8 @@ pub async fn get_scores(
         .await
         .unwrap_or(0.0);
 
-    let leaderboard_response = build_leaderboard_response(
-        &beatmap,
-        &scores,
-        personal_best,
-        avg_rating,
-        leaderboard.is_refx(),
-    );
+    let leaderboard_response =
+        build_leaderboard_response(&beatmap, &scores, personal_best, avg_rating);
 
     let done = now.elapsed();
 

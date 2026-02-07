@@ -26,7 +26,6 @@ bitflags! {
         const SDL2_LIBRARY                   = 1 << 20;
         const OPENSSL_LIBRARY                = 1 << 21;
         const AQN_MENU_SAMPLE                = 1 << 22;
-        const INVALID_CHEAT_VALUES           = 1 << 23;
     }
 }
 
@@ -130,10 +129,6 @@ impl LastFmFlags {
             (
                 LastFmFlags::AQN_MENU_SAMPLE.bits(),
                 "[CERTAIN] ancient AQN menu sound detected",
-            ),
-            (
-                LastFmFlags::INVALID_CHEAT_VALUES.bits(),
-                "[CERTAIN] invalid cheat values detected",
             ),
         ])
     }

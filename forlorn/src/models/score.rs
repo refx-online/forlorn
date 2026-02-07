@@ -1,6 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, types::Json};
+use sqlx::FromRow;
 
 use super::user::User;
 use crate::constants::{GameMode, Grade, Mods, SubmissionStatus};
@@ -10,8 +10,6 @@ pub struct Score {
     pub id: u64,
     pub map_md5: String,
     pub score: i32,
-    #[sqlx(rename = "xp_gained")]
-    pub xp: f32,
     pub pp: f32,
     pub acc: f32,
     pub max_combo: i32,
@@ -31,35 +29,6 @@ pub struct Score {
     pub userid: i32,
     pub perfect: bool,
     pub online_checksum: String,
-
-    // Somewhere in 2023,
-    // I made a huge mistake of naming these fields poorly.
-    // and i somehow think its a good idea to create
-    // the "uses" fields instead of checking with the -1.0 values.
-    // TODO: rename these fields in the database and remove "uses" fields later?
-    #[sqlx(rename = "aim_value")]
-    pub aim_correction_value: i32,
-    #[sqlx(rename = "ar_value")]
-    pub ar_changer_value: f32,
-    #[sqlx(rename = "aim")]
-    pub uses_aim_correction: bool,
-    #[sqlx(rename = "arc")]
-    pub uses_ar_changer: bool,
-    #[sqlx(rename = "cs")]
-    pub uses_cs_changer: bool,
-    #[sqlx(rename = "tw")]
-    pub uses_timewarp: bool,
-    #[sqlx(rename = "twval")]
-    pub timewarp_value: f32,
-    #[sqlx(rename = "hdr")]
-    pub uses_hd_remover: bool,
-
-    pub aim_assist_type: i8,
-
-    #[sqlx(default)]
-    pub maple_values: Option<Json<MapleAimAssistValues>>,
-
-    pub pinned: bool,
 
     #[sqlx(skip)]
     pub rank: u32,
@@ -106,39 +75,15 @@ impl Score {
 
             // will set later
             id: 0,
-            xp: 0.0,
             pp: 0.0,
             acc: 0.0,
             status: 0,
             time_elapsed: 0,
-            aim_correction_value: 0,
-            ar_changer_value: 0.0,
-            timewarp_value: 0.0,
-            uses_aim_correction: false,
-            uses_ar_changer: false,
-            uses_cs_changer: false,
-            uses_timewarp: false,
-            uses_hd_remover: false,
-            pinned: false,
             rank: 0,
             hypothetical_pp: 0.0,
             stars: 0.0,
             quit: false,
-
-            aim_assist_type: 0,
-            maple_values: None,
         })
-    }
-
-    pub fn aim_assist_type(&self) -> AimAssistType {
-        let aa_type = AimAssistType::from_i8(self.aim_assist_type);
-
-        // just incase
-        if aa_type == AimAssistType::None && self.uses_aim_correction {
-            AimAssistType::Correction
-        } else {
-            aa_type
-        }
     }
 
     pub fn mode(&self) -> GameMode {
@@ -188,12 +133,7 @@ impl Score {
             return (false, None);
         }
 
-        let pp_caps = self.mode().pp_cap();
-        if pp_caps.is_empty() {
-            return (false, None);
-        }
-
-        let threshold = pp_caps[user.whitelist_stage().min(pp_caps.len() - 1)];
+        let threshold = self.mode().pp_cap();
 
         (self.pp > threshold as f32, Some(threshold))
     }
@@ -212,32 +152,5 @@ impl Score {
         }
 
         total_hits as u32
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct MapleAimAssistValues {
-    pub v3powerval: Option<f32>,
-    pub v3sliderpowerval: Option<f32>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AimAssistType {
-    None,
-    Correction,
-    MapleAimAssist,
-}
-
-impl AimAssistType {
-    pub fn from_i8(value: i8) -> Self {
-        match value {
-            1 => Self::Correction,
-            2 => Self::MapleAimAssist,
-            _ => Self::None,
-        }
-    }
-
-    pub fn to_i8(self) -> i8 {
-        self as i8
     }
 }

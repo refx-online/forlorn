@@ -64,25 +64,6 @@ pub async fn get_lastfm(
         return (StatusCode::OK, b"-3").into_response();
     }
 
-    // they're probably already patched `ConfigManager`
-    // or some weak edits using `Harmony` or `Cheat Engine`
-    // yet, it's still punishable. since they are modifying the client.
-    if flags.contains(LastFmFlags::INVALID_CHEAT_VALUES) {
-        let _ = state
-            .metrics
-            .incr("lastfm.invalid_cheat_values", ["status:ok"]);
-
-        tokio::spawn(async move {
-            let _ = restrict::restrict(
-                &state.redis,
-                user.id,
-                &format!("invalid cheat values ({})", explanations),
-            )
-            .await;
-        });
-        return (StatusCode::OK, b"-3").into_response();
-    }
-
     // not sure if we want to restrict for these
     // since its possible that they doesn't even remember those multi account times
     // if flags.contains(LastFmFlags::REGISTRY_EDITS) {

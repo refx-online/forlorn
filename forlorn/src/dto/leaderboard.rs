@@ -41,9 +41,6 @@ pub struct GetScores {
 
     #[serde(rename = "a")]
     pub aqn_files_found: i32,
-
-    #[serde(rename = "fx", default)]
-    pub is_refx: i32,
 }
 
 impl GetScores {
@@ -53,10 +50,6 @@ impl GetScores {
 
     pub fn aqn_files_found(&self) -> bool {
         self.aqn_files_found != 0
-    }
-
-    pub fn is_refx(&self) -> bool {
-        self.is_refx != 0
     }
 
     pub fn mode(&self) -> GameMode {
