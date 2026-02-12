@@ -148,7 +148,7 @@ pub async fn fetch_personal_best_rank(
     db: &DbPoolManager,
     map_md5: &str,
     mode: i32,
-    score_value: f32,
+    score_value: i32,
     scoring_metric: &str,
 ) -> Result<i32> {
     let query = format!(

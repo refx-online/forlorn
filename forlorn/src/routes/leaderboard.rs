@@ -162,7 +162,7 @@ pub async fn get_scores(
     .await
     {
         Ok(s) => s,
-        Err(_) => return (StatusCode::OK, b"error: scores").into_response(),
+        Err(e) => return (StatusCode::OK, e.to_string().into_bytes()).into_response(),
     };
 
     let personal_best = if !scores.is_empty() {
