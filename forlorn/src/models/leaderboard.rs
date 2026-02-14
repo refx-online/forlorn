@@ -6,7 +6,7 @@ use crate::models::{AimAssistType, MapleAimAssistValues};
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct LeaderboardScore {
     pub id: u64,
-    pub preferred_metric: i32,
+    pub preferred_metric: f64,
     pub max_combo: i32,
     pub n50: i32,
     pub n100: i32,

@@ -38,7 +38,7 @@ pub async fn fetch_leaderboard_scores(
     let cheat_val = cheat_columns(is_refx);
 
     let base_query = format!(
-        "select s.id, s.{} as preferred_metric, \
+        "select s.id, CAST(s.{} AS DOUBLE) as preferred_metric, \
          s.max_combo, s.n50, s.n100, s.n300, \
          s.nmiss, s.nkatu, s.ngeki, s.perfect, s.mods, \
          unix_timestamp(s.play_time) as play_time, u.id as userid, \
@@ -121,7 +121,7 @@ pub async fn fetch_personal_best_score(
     let cheat_val = cheat_columns(is_refx);
 
     let query = format!(
-        "select s.id, s.{} as preferred_metric, \
+        "select s.id, CAST(s.{} AS DOUBLE) as preferred_metric, \
          s.max_combo, s.n50, s.n100, s.n300, \
          s.nmiss, s.nkatu, s.ngeki, s.perfect, s.mods, \
          unix_timestamp(s.play_time) as play_time, u.id as userid, u.name as name \
@@ -148,7 +148,7 @@ pub async fn fetch_personal_best_rank(
     db: &DbPoolManager,
     map_md5: &str,
     mode: i32,
-    score_value: i32,
+    score_value: f64,
     scoring_metric: &str,
 ) -> Result<i32> {
     let query = format!(
