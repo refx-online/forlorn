@@ -69,10 +69,14 @@ pub async fn calculate_pp(
         //       we should not calculate relax mods on that client because its nerf was deemed "too harsh"
         //       and because its a cheating stuff, and we know how the people that plays it reeaallly wants
         mods.remove(Mods::RELAX);
-
-        performance_request.mods = mods.bits();
     }
 
+    if performance_request.mode == GameMode::CHEAT_OSU.as_i32() {
+        // since streams are too stupid, we'll use "relax" nerfs to combat that
+        mods.insert(Mods::RELAX);
+    }
+
+    performance_request.mods = mods.bits();
     // mode as vanilla
     performance_request.mode %= 4;
 
