@@ -5,13 +5,13 @@ use axum::{
     response::IntoResponse,
 };
 
-use crate::state::AppState;
+use crate::{dto::replay::GetReplay, state::AppState};
 
 pub async fn get_replay(
     State(state): State<AppState>,
-    Query(score_id): Query<u64>,
+    Query(replay): Query<GetReplay>,
 ) -> impl IntoResponse {
-    match state.storage.load_replay(score_id).await {
+    match state.storage.load_replay(replay.score_id).await {
         Ok(replay) => Bytes::from(replay).into_response(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
