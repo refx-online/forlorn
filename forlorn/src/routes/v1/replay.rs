@@ -5,7 +5,7 @@ use axum::{
     response::IntoResponse,
 };
 
-use crate::{dto::replay::GetReplay, state::AppState};
+use crate::{dto::v1::replay::GetReplay, state::AppState};
 
 pub async fn get_replay(
     State(state): State<AppState>,
