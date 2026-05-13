@@ -61,6 +61,7 @@ pub async fn calculate_pp(
     let mut performance_request = requests.clone();
     let mut mods = Mods::from_bits_truncate(performance_request.mods);
 
+    // lowkey this look stupid
     if (performance_request.mode == GameMode::CHEAT_OSU.as_i32()
         || performance_request.mode == GameMode::CHEAT_CHEAT_OSU.as_i32())
         && mods.contains(Mods::RELAX)
@@ -71,7 +72,9 @@ pub async fn calculate_pp(
         mods.remove(Mods::RELAX);
     }
 
-    if performance_request.mode == GameMode::CHEAT_OSU.as_i32() {
+    if (performance_request.mode == GameMode::CHEAT_OSU.as_i32()
+        || performance_request.mode == GameMode::CHEAT_CHEAT_OSU.as_i32()) 
+    {
         // since streams are too stupid, we'll use "relax" nerfs to combat that
         mods.insert(Mods::RELAX);
     }
