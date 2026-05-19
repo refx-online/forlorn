@@ -39,7 +39,7 @@ bitflags! {
 }
 
 impl Mods {
-    pub fn as_str(self) -> String {
+    pub fn as_str(self, clock_rate: f64) -> String {
         if self.is_empty() {
             return "NM".into();
         }
@@ -83,6 +83,12 @@ impl Mods {
         for (flag, text) in list {
             if self.contains(flag) {
                 out.push_str(text);
+
+                if clock_rate > -1.0
+                    && matches!(flag, Mods::DOUBLETIME | Mods::HALFTIME | Mods::NIGHTCORE)
+                {
+                    out.push_str(&format!("({:.2}x)", clock_rate));
+                }
             }
         }
 

@@ -163,6 +163,7 @@ pub async fn calculate_performance(
     accuracy: f32,
     miss_count: i32,
     legacy_score: i32,
+    clock_rate: f64,
 ) -> (f32, f32, f32) {
     let request = PerformanceRequest {
         beatmap_id,
@@ -172,6 +173,7 @@ pub async fn calculate_performance(
         accuracy,
         miss_count,
         legacy_score,
+        clock_rate,
     };
 
     match calculate_pp(config, &request).await {
@@ -393,6 +395,7 @@ pub fn consume_cheat_values(score: &mut Score, fields: &ScoreSubmission) {
     if let Some(maple) = fields.maple_values.clone() {
         score.maple_values = Some(Json(maple));
     }
+    score.clock_rate = fields.clock_rate;
 }
 
 pub fn validate_cheat_values(score: &Score) -> bool {
@@ -463,7 +466,7 @@ pub fn first_place_webhook(
         score.nmiss,
         score.max_combo,
         beatmap.max_combo,
-        score.mods().as_str()
+        score.mods().as_str(score.clock_rate)
     );
 
     #[allow(clippy::uninlined_format_args)]

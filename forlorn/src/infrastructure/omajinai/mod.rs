@@ -23,6 +23,8 @@ pub struct PerformanceRequest {
     //pub lazer: Option<bool>,
     //pub passed_objects: Option<i32>,
     pub legacy_score: i32,
+    // we can safely pass this since it's handled in omajinai.
+    pub clock_rate: f64,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -39,6 +39,7 @@ pub struct LeaderboardScore {
     #[sqlx(rename = "score")]
     // because of legacy score calculation, we need an actual score to calculate the misses.
     pub actual_score: Option<i32>,
+    pub clock_rate: Option<f64>,
 }
 
 impl LeaderboardScore {

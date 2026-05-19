@@ -22,4 +22,7 @@ pub struct GetCalculateMap {
 
     #[serde(rename = "score")]
     pub legacy_score: Option<i32>,
+
+    #[serde(rename = "clock_rate")]
+    pub clock_rate: Option<f64>,
 }

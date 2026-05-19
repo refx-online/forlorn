@@ -50,6 +50,7 @@ pub fn fmt_f(f: f32) -> String {
 pub fn build_submission(
     score_data_b64: Vec<u8>,
     replay_file: Vec<u8>,
+    lazer_data: Vec<u8>,
     fields: HashMap<String, Bytes>,
 ) -> Option<ScoreSubmission> {
     let get_string = |key: &str| -> Option<String> {
@@ -60,6 +61,8 @@ pub fn build_submission(
     let get_i32 = |key: &str| -> i32 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0) };
     let get_f32 =
         |key: &str| -> f32 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0.0) };
+    let get_f64 =
+        |key: &str| -> f64 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0.0) };
     let get_i8 = |key: &str| -> i8 { get_string(key).and_then(|s| s.parse().ok()).unwrap_or(0) };
 
     let maple_values =
@@ -87,8 +90,10 @@ pub fn build_submission(
         tw: get_string("tw"),
         twval: get_f32("twval"),
         refx: get_string("refx"),
+        clock_rate: get_f64("clock_rate_just_in_case"),
         maple_values,
         score_data_b64,
+        lazer_data,
         replay_file,
     })
 }

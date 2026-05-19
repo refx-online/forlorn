@@ -56,6 +56,8 @@ pub struct Score {
 
     pub aim_assist_type: i8,
 
+    pub clock_rate: f64,
+
     #[sqlx(default)]
     pub maple_values: Option<Json<MapleAimAssistValues>>,
 
@@ -127,6 +129,7 @@ impl Score {
 
             aim_assist_type: 0,
             maple_values: None,
+            clock_rate: 0.0,
         })
     }
 

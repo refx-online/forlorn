@@ -51,16 +51,19 @@ async fn authenticate_user(
 
 async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScoreSubmission, Response> {
     let mut score_fields = Vec::new();
+    let mut lazer_data: Option<Vec<u8>> = None;
     let mut fields: HashMap<String, Bytes> = HashMap::new();
 
     while let Some(field) = multipart.next_field().await.ok().flatten() {
         let name = field.name().unwrap_or_default().to_owned();
         let content = field.bytes().await.unwrap_or_default();
 
-        if name == "score" {
-            score_fields.push(content.to_vec());
-        } else {
-            fields.insert(name, content);
+        match name.as_str() {
+            "score" => score_fields.push(content.to_vec()),
+            "lazer" => lazer_data = Some(content.to_vec()),
+            _ => {
+                fields.insert(name, content);
+            },
         }
     }
 
@@ -68,7 +71,12 @@ async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScoreSubmiss
         .try_into()
         .map_err(|_| (StatusCode::OK, b"error: no").into_response())?;
 
-    match build_submission(score_data_b64, replay_file, fields) {
+    match build_submission(
+        score_data_b64,
+        replay_file,
+        lazer_data.unwrap_or_default(),
+        fields,
+    ) {
         Some(submission) => Ok(submission),
         None => Err((StatusCode::OK, b"error: no").into_response()),
     }
@@ -247,7 +255,7 @@ pub async fn submit_score(
     if !submission.refx() && score.mods().conflict() {
         let _ = state.metrics.incr(
             "score.mods_conflict",
-            [format!("mods:{}", score.mods().as_str())],
+            [format!("mods:{}", score.mods().as_str(score.clock_rate))],
         );
 
         {
@@ -256,7 +264,10 @@ pub async fn submit_score(
                 let _ = restrict::restrict(
                     &r,
                     user.id,
-                    &format!("illegal mod combination ({})", score.mods().as_str()),
+                    &format!(
+                        "illegal mod combination ({})",
+                        score.mods().as_str(score.clock_rate)
+                    ),
                 )
                 .await;
             });
@@ -315,6 +326,7 @@ pub async fn submit_score(
             score.acc,
             score.nmiss,
             score.score,
+            score.clock_rate,
         )
         .await;
 
@@ -411,10 +423,13 @@ pub async fn submit_score(
             const MIN_REPLAY_SIZE: usize = 24;
 
             if submission.replay_file.len() >= MIN_REPLAY_SIZE {
-                let _ = state
-                    .storage
-                    .save_replay(score.id, &submission.replay_file)
-                    .await;
+                let mut full_replay = submission.replay_file.clone();
+
+                if !submission.lazer_data.is_empty() && submission.refx() {
+                    full_replay.extend_from_slice(&submission.lazer_data);
+                }
+
+                let _ = state.storage.save_replay(score.id, &full_replay).await;
             } else {
                 let r = state.redis.clone();
                 tokio::spawn(async move {

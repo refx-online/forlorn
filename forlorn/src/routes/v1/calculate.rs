@@ -24,6 +24,7 @@ pub async fn get_calculate_map(
     let max_combo = calculate.max_combo.unwrap_or(0);
     let legacy_score = calculate.legacy_score.unwrap_or(0);
     let miss_count = calculate.misses.unwrap_or(0);
+    let clock_rate = calculate.clock_rate.unwrap_or(-1.0);
 
     let beatmap =
         match repository::beatmap::fetch_by_id(&state.config, &state.db, &calculate.map_id).await {
@@ -91,6 +92,7 @@ pub async fn get_calculate_map(
                 accuracy,
                 miss_count,
                 legacy_score,
+                clock_rate,
             )
             .await;
 
@@ -121,6 +123,7 @@ pub async fn get_calculate_map(
         accuracy,
         miss_count,
         legacy_score,
+        clock_rate,
     )
     .await;
 

@@ -49,8 +49,10 @@ pub struct ScoreSubmission {
     pub refx: Option<String>,
     pub maple_values: Option<MapleAimAssistValues>,
     pub score_data_b64: Vec<u8>,
+    pub lazer_data: Vec<u8>,
     pub replay_file: Vec<u8>,
     pub auth_hash: Option<String>,
+    pub clock_rate: f64,
 }
 
 impl ScoreSubmission {
