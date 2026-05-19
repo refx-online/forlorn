@@ -81,6 +81,10 @@ impl Mods {
         ];
 
         for (flag, text) in list {
+            if self.contains(Mods::NIGHTCORE) && flag == Mods::DOUBLETIME {
+                continue;
+            }
+
             if self.contains(flag) {
                 out.push_str(text);
 
