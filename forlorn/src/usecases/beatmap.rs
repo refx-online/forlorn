@@ -48,11 +48,17 @@ pub async fn ensure_local_osu_file(
         match storage.load_beatmap(beatmap.id).await {
             Ok(bytes) if !bytes.is_empty() => {
                 if !is_valid_osu_format(&bytes) {
-                    return Ok(false);
+                    tracing::warn!(
+                        "beatmap {} from R2 failed format check, falling back to beatmap service",
+                        beatmap.id,
+                    );
+                    let bytes = fetch_beatmap(config, beatmap.id).await?;
+                    let _ = storage.save_beatmap(beatmap.id, &bytes, false).await;
+                    bytes
+                } else {
+                    let _ = storage.save_beatmap(beatmap.id, &bytes, true).await;
+                    bytes
                 }
-                let _ = storage.save_beatmap(beatmap.id, &bytes, true).await;
-
-                bytes
             },
             _ => {
                 tracing::info!(
@@ -72,7 +78,34 @@ pub async fn ensure_local_osu_file(
 
     let osu_file_md5 = format!("{:x}", md5_hasher.finalize());
 
-    Ok(osu_file_md5 == beatmap.md5)
+    if osu_file_md5 != beatmap.md5 {
+        tracing::warn!(
+            "md5 mismatch for beatmap {} ({} != {}), re-fetching from service",
+            beatmap.id,
+            osu_file_md5,
+            beatmap.md5,
+        );
+        let bytes = fetch_beatmap(config, beatmap.id).await?;
+        let _ = storage.save_beatmap(beatmap.id, &bytes, false).await;
+
+        let mut hasher = Md5::new();
+        hasher.update(&bytes);
+        let refetched_md5 = format!("{:x}", hasher.finalize());
+
+        if refetched_md5 != beatmap.md5 {
+            tracing::error!(
+                "beatmap {} md5 mismatch after re-fetch: got {} but db has {}",
+                beatmap.id,
+                refetched_md5,
+                beatmap.md5,
+            );
+            return Ok(false);
+        }
+
+        return Ok(true);
+    }
+
+    Ok(true)
 }
 
 fn is_valid_osu_format(bytes: &[u8]) -> bool {

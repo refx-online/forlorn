@@ -11,7 +11,11 @@ use crate::{
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
 
 pub async fn fetch_beatmap(config: &OmajinaiConfig, beatmap_id: i32) -> Result<Vec<u8>> {
-    let url = format!("{}/get-osu/{beatmap_id}", config.beatmap_service_url);
+    let url = if config.beatmap_service_url.is_empty() {
+        format!("https://old.ppy.sh/osu/{beatmap_id}")
+    } else {
+        format!("{}/get-osu/{beatmap_id}", config.beatmap_service_url)
+    };
 
     let resp = CLIENT.get(&url).send().await?;
     let bytes = resp.bytes().await?;

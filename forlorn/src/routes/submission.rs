@@ -69,7 +69,10 @@ async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScoreSubmiss
 
     let [score_data_b64, replay_file]: [Vec<u8>; 2] = score_fields
         .try_into()
-        .map_err(|_| (StatusCode::OK, b"error: no").into_response())?;
+        .map_err(|_| {
+            tracing::warn!("parse_typed_multipart: wrong number of score fields");
+            (StatusCode::OK, b"error: no").into_response()
+        })?;
 
     match build_submission(
         score_data_b64,
@@ -78,7 +81,10 @@ async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScoreSubmiss
         fields,
     ) {
         Some(submission) => Ok(submission),
-        None => Err((StatusCode::OK, b"error: no").into_response()),
+        None => {
+            tracing::warn!("build_submission returned None");
+            Err((StatusCode::OK, b"error: no").into_response())
+        },
     }
 }
 
@@ -111,12 +117,18 @@ pub async fn submit_score(
         &submission.osu_version,
     ) {
         Ok((v, c)) => (v, c),
-        Err(_) => return (StatusCode::OK, b"error: no").into_response(),
+        Err(_) => {
+            tracing::warn!("decrypt_score_data failed");
+            return (StatusCode::OK, b"error: no").into_response();
+        },
     };
 
     let score_header = match ScoreHeader::from_decrypted(&score_data) {
         Some(d) => d,
-        None => return (StatusCode::OK, b"error: no").into_response(),
+        None => {
+            tracing::warn!("ScoreHeader::from_decrypted failed to parse score data");
+            return (StatusCode::OK, b"error: no").into_response();
+        },
     };
 
     let user =
@@ -196,12 +208,18 @@ pub async fn submit_score(
             .await
         {
             Ok(Some(beatmap)) => beatmap,
-            _ => return (StatusCode::OK, b"error: beatmap").into_response(),
+            _ => {
+                tracing::warn!("beatmap not found for md5: {}", score_header.map_md5);
+                return (StatusCode::OK, b"error: beatmap").into_response();
+            },
         };
 
     let mut score = match Score::from_submission(&score_data[2..], score_header.map_md5, user.id) {
         Some(score) => score,
-        None => return (StatusCode::OK, b"error: no").into_response(),
+        None => {
+            tracing::warn!("Score::from_submission failed to parse score data");
+            return (StatusCode::OK, b"error: no").into_response();
+        },
     };
 
     score.mode = score.mode().as_i32();
@@ -258,16 +276,21 @@ pub async fn submit_score(
             [format!("mods:{}", score.mods().as_str(score.clock_rate))],
         );
 
+        let mods_str = score.mods().as_str(score.clock_rate);
+
+        tracing::warn!(
+            "{} submitted conflicting mods: {}",
+            user.name(),
+            mods_str
+        );
+
         {
             let r = state.redis.clone();
             tokio::spawn(async move {
                 let _ = restrict::restrict(
                     &r,
                     user.id,
-                    &format!(
-                        "illegal mod combination ({})",
-                        score.mods().as_str(score.clock_rate)
-                    ),
+                    &format!("illegal mod combination ({})", mods_str),
                 )
                 .await;
             });
@@ -279,6 +302,7 @@ pub async fn submit_score(
     match ensure_local_osu_file(&state.storage, &state.config.omajinai, &beatmap).await {
         Ok(true) => {},
         _ => {
+            tracing::warn!("ensure_local_osu_file failed for beatmap id: {}", beatmap.id);
             return (StatusCode::OK, b"error: no").into_response();
         },
     }
@@ -405,7 +429,10 @@ pub async fn submit_score(
 
         score.id = match repository::score::insert(&state.db, &score, &beatmap).await {
             Ok(id) => id,
-            _ => return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response(),
+            _ => {
+                tracing::error!("score insert failed for user: {}", user.name());
+                return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
+            },
         };
 
         if score.passed {
@@ -466,7 +493,14 @@ pub async fn submit_score(
         .await
         {
             Ok(Some(stats)) => stats,
-            _ => return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response(),
+            _ => {
+                tracing::error!(
+                    "stats fetch failed for user {} mode {}",
+                    user.id,
+                    score.mode
+                );
+                return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
+            },
         };
 
         let prev_stats = stats.clone();
@@ -509,6 +543,7 @@ pub async fn submit_score(
                 stats.rscore += additional_rscore as u64;
 
                 if score.pp > 0.0 && (recalculate(&state.db, &mut stats).await).is_err() {
+                    tracing::error!("recalculate failed for user: {}", user.name());
                     return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
                 }
 
@@ -545,6 +580,7 @@ pub async fn submit_score(
         }
 
         if (repository::stats::save(&state.db, &stats).await).is_err() {
+            tracing::error!("stats save failed for user: {}", user.name());
             return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
         }
 
