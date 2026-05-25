@@ -141,7 +141,7 @@ pub async fn submit_score(
     //       this shouldn't even get passed since bancho already handles this?
     //       but for extra safety, maybe i should restrict them too?
     //       since they most likely spoofed `GameBase.ClientHash`.
-/*
+
     if submission.refx() && osu_path_md5 != REFX_CURRENT_CLIENT_HASH {
         let _ = state
             .metrics
@@ -163,7 +163,7 @@ pub async fn submit_score(
 
         return (StatusCode::OK, b"error: no").into_response();
     }
-*/
+
     // same as above
     if submission.refx() && submission.auth_hash() != REFX_AUTH_HASH {
         let _ = state.metrics.incr("score.auth_hash_flagged", ["status:ok"]);
