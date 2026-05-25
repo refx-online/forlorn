@@ -141,6 +141,7 @@ pub async fn submit_score(
     //       this shouldn't even get passed since bancho already handles this?
     //       but for extra safety, maybe i should restrict them too?
     //       since they most likely spoofed `GameBase.ClientHash`.
+/*
     if submission.refx() && osu_path_md5 != REFX_CURRENT_CLIENT_HASH {
         let _ = state
             .metrics
@@ -162,7 +163,7 @@ pub async fn submit_score(
 
         return (StatusCode::OK, b"error: no").into_response();
     }
-
+*/
     // same as above
     if submission.refx() && submission.auth_hash() != REFX_AUTH_HASH {
         let _ = state.metrics.incr("score.auth_hash_flagged", ["status:ok"]);
@@ -276,25 +277,26 @@ pub async fn submit_score(
             [format!("mods:{}", score.mods().as_str(score.clock_rate))],
         );
 
-        let mods_str = score.mods().as_str(score.clock_rate);
-
-        tracing::warn!(
-            "{} submitted conflicting mods: {}",
-            user.name(),
-            mods_str
-        );
-
         {
             let r = state.redis.clone();
             tokio::spawn(async move {
                 let _ = restrict::restrict(
                     &r,
                     user.id,
-                    &format!("illegal mod combination ({})", mods_str),
+                    &format!(
+                        "illegal mod combination ({})",
+                        score.mods().as_str(score.clock_rate)
+                    ),
                 )
                 .await;
             });
         }
+
+        tracing::warn!(
+            "{} submitted conflicting mods: {}",
+            user.name(),
+            score.mods().as_str(score.clock_rate)
+        );
 
         return (StatusCode::OK, b"error: no").into_response();
     }

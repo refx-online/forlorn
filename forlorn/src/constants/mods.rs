@@ -89,6 +89,8 @@ impl Mods {
                 out.push_str(text);
 
                 if clock_rate > -1.0
+                    && clock_rate != 0.0
+                    && clock_rate != 1.5
                     && matches!(flag, Mods::DOUBLETIME | Mods::HALFTIME | Mods::NIGHTCORE)
                 {
                     out.push_str(&format!("({:.2}x)", clock_rate));
