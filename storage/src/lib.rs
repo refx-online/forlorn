@@ -5,7 +5,6 @@ use cloudflare_r2_rs::r2::R2Manager;
 
 #[derive(Clone)]
 pub struct Storage {
-    beatmap_path: PathBuf,
     replay_path: PathBuf,
     screenshot_path: PathBuf,
     osz_path: PathBuf,
@@ -13,9 +12,7 @@ pub struct Storage {
 }
 
 impl Storage {
-    #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        beatmap_path: PathBuf,
         replay_path: PathBuf,
         screenshot_path: PathBuf,
         osz_path: PathBuf,
@@ -39,7 +36,6 @@ impl Storage {
         };
 
         Self {
-            beatmap_path,
             replay_path,
             screenshot_path,
             osz_path,
@@ -47,9 +43,6 @@ impl Storage {
         }
     }
 
-    pub fn beatmap_file(&self, beatmap_id: i32) -> PathBuf {
-        self.beatmap_path.join(format!("{beatmap_id}.osu"))
-    }
     fn osz_file(&self, mapset_id: i32) -> PathBuf {
         self.osz_path.join(format!("{mapset_id}.osz"))
     }
@@ -60,9 +53,6 @@ impl Storage {
         self.screenshot_path.join(name_with_ext)
     }
 
-    fn beatmap_key(&self, beatmap_id: i32) -> String {
-        format!("osu/{beatmap_id}.osu")
-    }
     fn osz_key(&self, mapset_id: i32) -> String {
         format!("osz/{mapset_id}.osz")
     }
@@ -71,37 +61,6 @@ impl Storage {
     }
     fn screenshot_key(&self, name_with_ext: &str) -> String {
         format!("ss/{name_with_ext}")
-    }
-
-    pub async fn save_beatmap(&self, beatmap_id: i32, data: &[u8], exists: bool) -> Result<()> {
-        // chances are, .osu does not exists on the bucket
-        // but exists on local.
-        if !exists && let Some(r2) = &self.r2 {
-            r2.upload(
-                &self.beatmap_key(beatmap_id),
-                data,
-                None,
-                Some("text/plain"),
-            )
-            .await;
-        }
-
-        // since omajinai still uses local path
-        // we ensure .osu still exists on it's path
-        fs::write(self.beatmap_file(beatmap_id), data)?;
-
-        Ok(())
-    }
-
-    pub async fn load_beatmap(&self, beatmap_id: i32) -> Result<Vec<u8>> {
-        if let Some(r2) = &self.r2 {
-            match r2.get(&self.beatmap_key(beatmap_id)).await {
-                Some(osu) => Ok(osu),
-                None => Ok(fs::read(self.beatmap_file(beatmap_id))?),
-            }
-        } else {
-            Ok(fs::read(self.beatmap_file(beatmap_id))?)
-        }
     }
 
     pub async fn save_osz(&self, mapset_id: i32, data: &[u8]) -> Result<()> {

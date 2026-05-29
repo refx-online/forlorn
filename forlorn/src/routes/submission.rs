@@ -19,7 +19,7 @@ use crate::{
     repository,
     state::AppState,
     usecases::{
-        beatmap::{ensure_local_osu_file, increment_playcount},
+        beatmap::{ensure_osu_file, increment_playcount},
         password::verify_password,
         score::{
             calculate_accuracy, calculate_performance, calculate_placement, calculate_status,
@@ -272,39 +272,34 @@ pub async fn submit_score(
     }
 
     if !submission.refx() && score.mods().conflict() {
-        let _ = state.metrics.incr(
-            "score.mods_conflict",
-            [format!("mods:{}", score.mods().as_str(score.clock_rate))],
-        );
+        let mods_str = score.mods().as_str(score.clock_rate);
+        let _ = state
+            .metrics
+            .incr("score.mods_conflict", [format!("mods:{}", mods_str)]);
 
         {
             let r = state.redis.clone();
+            let user_id = user.id;
+            let mods_str = mods_str.clone();
             tokio::spawn(async move {
                 let _ = restrict::restrict(
                     &r,
-                    user.id,
-                    &format!(
-                        "illegal mod combination ({})",
-                        score.mods().as_str(score.clock_rate)
-                    ),
+                    user_id,
+                    &format!("illegal mod combination ({})", mods_str),
                 )
                 .await;
             });
         }
 
-        tracing::warn!(
-            "{} submitted conflicting mods: {}",
-            user.name(),
-            score.mods().as_str(score.clock_rate)
-        );
+        tracing::warn!("{} submitted conflicting mods: {}", user.name(), mods_str);
 
         return (StatusCode::OK, b"error: no").into_response();
     }
 
-    match ensure_local_osu_file(&state.storage, &state.config.omajinai, &beatmap).await {
+    match ensure_osu_file(&state.config.omajinai, &beatmap).await {
         Ok(true) => {},
         _ => {
-            tracing::warn!("ensure_local_osu_file failed for beatmap id: {}", beatmap.id);
+            tracing::warn!("ensure_osu_file failed for beatmap id: {}", beatmap.id);
             return (StatusCode::OK, b"error: no").into_response();
         },
     }

@@ -36,7 +36,6 @@ async fn main() -> Result<()> {
     let metrics = Arc::new(datadog::create_metric(config.datadog.clone()));
 
     let storage = Storage::new(
-        config.omajinai.beatmap_path.clone(),
         config.replay_path.clone(),
         config.screenshot_path.clone(),
         config.osz_path.clone(),

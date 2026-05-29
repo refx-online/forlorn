@@ -9,7 +9,7 @@ use crate::{
     dto::v1::calculate::GetCalculateMap,
     repository,
     state::AppState,
-    usecases::{beatmap::ensure_local_osu_file, score::calculate_performance},
+    usecases::score::calculate_performance,
 };
 
 const COMMON_ACCURACY: [f32; 5] = [100.0, 99.0, 98.0, 95.0, 90.0];
@@ -62,18 +62,6 @@ pub async fn get_calculate_map(
         "diff": beatmap.diff,
         "last_update": beatmap.last_update,
     });
-
-    if ensure_local_osu_file(&state.storage, &state.config.omajinai, &beatmap)
-        .await
-        .is_err()
-    {
-        return (
-            StatusCode::NOT_FOUND,
-            Json(json!({
-                "reason": "Beatmap doesn't exists.",
-            })),
-        );
-    }
 
     let _ = state.metrics.incr("pp.calculated", ["status:ok"]);
 

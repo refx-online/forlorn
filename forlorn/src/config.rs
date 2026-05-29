@@ -56,11 +56,7 @@ pub struct CloudflareR2Config {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OmajinaiConfig {
     pub base_url: String,
-    // not quite. omajinai does not serve beatmaps itself
-    // but its feature to check for beatmap relies on beatmap service
-    // since making another config for that seems overkill, i just put it here!
     pub beatmap_service_url: String,
-    pub beatmap_path: PathBuf,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -147,7 +143,6 @@ impl Default for OmajinaiConfig {
         Self {
             base_url: "http://localhost:9292".into(),
             beatmap_service_url: String::new(),
-            beatmap_path: PathBuf::from(".data/osu"),
         }
     }
 }
@@ -251,10 +246,6 @@ impl Config {
         if let Ok(omajinai_beatmap_service_url) = std::env::var("OMAJINAI_BEATMAP_SERVICE_URL") {
             config.omajinai.beatmap_service_url = omajinai_beatmap_service_url;
         }
-        if let Ok(omajinai_beatmap_path) = std::env::var("OMAJINAI_BEATMAP_PATH") {
-            config.omajinai.beatmap_path = PathBuf::from(omajinai_beatmap_path);
-        }
-
         if let Ok(discord_score_webhook) = std::env::var("DISCORD_SCORE_WEBHOOK") {
             config.webhook.score = discord_score_webhook;
         }

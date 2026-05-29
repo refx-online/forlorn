@@ -1,14 +1,23 @@
-use std::fs;
+use std::sync::LazyLock;
 
 use anyhow::Result;
-use md5::{Digest, Md5};
-use storage::Storage;
 
 use crate::{
     config::OmajinaiConfig,
-    infrastructure::{database::DbPoolManager, omajinai::beatmap::fetch_beatmap},
+    infrastructure::database::DbPoolManager,
     models::Beatmap,
 };
+
+static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
+
+pub async fn ensure_osu_file(config: &OmajinaiConfig, beatmap: &Beatmap) -> Result<bool> {
+    let url = format!(
+        "{}/v1/ensure-osu/{}?md5={}",
+        config.beatmap_service_url, beatmap.id, beatmap.md5
+    );
+    let resp = CLIENT.get(&url).send().await?;
+    Ok(resp.status().is_success())
+}
 
 pub async fn increment_playcount(
     db: &DbPoolManager,
@@ -28,88 +37,4 @@ pub async fn increment_playcount(
         .await?;
 
     Ok(())
-}
-
-pub async fn ensure_local_osu_file(
-    storage: &Storage,
-    config: &OmajinaiConfig,
-    beatmap: &Beatmap,
-) -> Result<bool> {
-    let osu_file_path = storage.beatmap_file(beatmap.id);
-    let osu_file_bytes = if osu_file_path.exists() {
-        let bytes = fs::read(&osu_file_path)?;
-        if !is_valid_osu_format(&bytes) {
-            let _ = fs::remove_file(&osu_file_path);
-            return Ok(false);
-        }
-
-        bytes
-    } else {
-        match storage.load_beatmap(beatmap.id).await {
-            Ok(bytes) if !bytes.is_empty() => {
-                if !is_valid_osu_format(&bytes) {
-                    tracing::warn!(
-                        "beatmap {} from R2 failed format check, falling back to beatmap service",
-                        beatmap.id,
-                    );
-                    let bytes = fetch_beatmap(config, beatmap.id).await?;
-                    let _ = storage.save_beatmap(beatmap.id, &bytes, false).await;
-                    bytes
-                } else {
-                    let _ = storage.save_beatmap(beatmap.id, &bytes, true).await;
-                    bytes
-                }
-            },
-            _ => {
-                tracing::info!(
-                    "fetching <{} ({})> from beatmap service.",
-                    beatmap.full_name(),
-                    beatmap.id
-                );
-                let bytes = fetch_beatmap(config, beatmap.id).await?;
-                let _ = storage.save_beatmap(beatmap.id, &bytes, false).await;
-
-                bytes
-            },
-        }
-    };
-    let mut md5_hasher = Md5::new();
-    md5_hasher.update(&osu_file_bytes);
-
-    let osu_file_md5 = format!("{:x}", md5_hasher.finalize());
-
-    if osu_file_md5 != beatmap.md5 {
-        tracing::warn!(
-            "md5 mismatch for beatmap {} ({} != {}), re-fetching from service",
-            beatmap.id,
-            osu_file_md5,
-            beatmap.md5,
-        );
-        let bytes = fetch_beatmap(config, beatmap.id).await?;
-        let _ = storage.save_beatmap(beatmap.id, &bytes, false).await;
-
-        let mut hasher = Md5::new();
-        hasher.update(&bytes);
-        let refetched_md5 = format!("{:x}", hasher.finalize());
-
-        if refetched_md5 != beatmap.md5 {
-            tracing::error!(
-                "beatmap {} md5 mismatch after re-fetch: got {} but db has {}",
-                beatmap.id,
-                refetched_md5,
-                beatmap.md5,
-            );
-            return Ok(false);
-        }
-
-        return Ok(true);
-    }
-
-    Ok(true)
-}
-
-fn is_valid_osu_format(bytes: &[u8]) -> bool {
-    let header = String::from_utf8_lossy(&bytes[..bytes.len().min(100)]);
-
-    header.to_lowercase().contains("osu file format v14")
 }

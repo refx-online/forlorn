@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use axum::{
     body::Bytes,
     extract::{Path, Query, State},
@@ -9,6 +11,8 @@ use crate::{
     dto::friends::GetFriends, models::User, repository, state::AppState,
     usecases::password::verify_password,
 };
+
+static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
 
 const PRIVATE_INITIAL_MAP_ID: i32 = 1000000000;
 const PRIVATE_INITIAL_SET_ID: i32 = 1000000000;
@@ -53,9 +57,18 @@ pub async fn get_updated_beatmap(
             .into_response();
     }
 
-    match state.storage.load_beatmap(beatmap.id).await {
-        Ok(beatmap) => Bytes::from(beatmap).into_response(),
-        Err(_) => StatusCode::NOT_FOUND.into_response(),
+    let url = format!(
+        "{}/v1/get-osu/{}?md5={}",
+        state.config.omajinai.beatmap_service_url, beatmap.id, beatmap.md5
+    );
+    match CLIENT.get(&url).send().await {
+        Ok(resp) if resp.status().is_success() => {
+            match resp.bytes().await {
+                Ok(data) => Bytes::from(data).into_response(),
+                Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            }
+        },
+        _ => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
