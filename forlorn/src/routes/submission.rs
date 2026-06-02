@@ -67,12 +67,10 @@ async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScoreSubmiss
         }
     }
 
-    let [score_data_b64, replay_file]: [Vec<u8>; 2] = score_fields
-        .try_into()
-        .map_err(|_| {
-            tracing::warn!("parse_typed_multipart: wrong number of score fields");
-            (StatusCode::OK, b"error: no").into_response()
-        })?;
+    let [score_data_b64, replay_file]: [Vec<u8>; 2] = score_fields.try_into().map_err(|_| {
+        tracing::warn!("parse_typed_multipart: wrong number of score fields");
+        (StatusCode::OK, b"error: no").into_response()
+    })?;
 
     match build_submission(
         score_data_b64,

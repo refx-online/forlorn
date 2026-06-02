@@ -62,11 +62,9 @@ pub async fn get_updated_beatmap(
         state.config.omajinai.beatmap_service_url, beatmap.id, beatmap.md5
     );
     match CLIENT.get(&url).send().await {
-        Ok(resp) if resp.status().is_success() => {
-            match resp.bytes().await {
-                Ok(data) => Bytes::from(data).into_response(),
-                Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-            }
+        Ok(resp) if resp.status().is_success() => match resp.bytes().await {
+            Ok(data) => data.into_response(),
+            Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         },
         _ => StatusCode::NOT_FOUND.into_response(),
     }

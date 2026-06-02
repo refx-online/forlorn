@@ -2,11 +2,7 @@ use std::sync::LazyLock;
 
 use anyhow::Result;
 
-use crate::{
-    config::OmajinaiConfig,
-    infrastructure::database::DbPoolManager,
-    models::Beatmap,
-};
+use crate::{config::OmajinaiConfig, infrastructure::database::DbPoolManager, models::Beatmap};
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
 

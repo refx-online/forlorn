@@ -226,8 +226,7 @@ async fn md5_from_api(config: &Config, db: &DbPoolManager, md5: &str) -> Result<
 
             to_save.push(updated);
         } else {
-            let mut new_map =
-                parse_beatmap_from_api(beatmap.clone());
+            let mut new_map = parse_beatmap_from_api(beatmap.clone());
 
             new_map.frozen = false;
             new_map.plays = 0;

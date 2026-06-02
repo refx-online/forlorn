@@ -110,8 +110,16 @@ pub fn update_beatmap_from_api(beatmap: &mut Beatmap, data: &BeatmapApiResponse)
 
     beatmap.last_update = chrono::Utc::now();
     beatmap.total_length = data.total_length.parse().unwrap_or(0);
-    beatmap.max_combo = data.max_combo.as_ref().and_then(|s| s.parse().ok()).unwrap_or(0);
-    beatmap.bpm = data.bpm.as_ref().and_then(|s| s.parse().ok()).unwrap_or(0.0);
+    beatmap.max_combo = data
+        .max_combo
+        .as_ref()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+    beatmap.bpm = data
+        .bpm
+        .as_ref()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.0);
     beatmap.cs = data.cs.parse().unwrap_or(0.0);
     beatmap.ar = data.ar.parse().unwrap_or(0.0);
     beatmap.od = data.od.parse().unwrap_or(0.0);

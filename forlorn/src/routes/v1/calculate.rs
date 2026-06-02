@@ -6,9 +6,7 @@ use axum::{
 use serde_json::{Value, json};
 
 use crate::{
-    dto::v1::calculate::GetCalculateMap,
-    repository,
-    state::AppState,
+    dto::v1::calculate::GetCalculateMap, repository, state::AppState,
     usecases::score::calculate_performance,
 };
 
