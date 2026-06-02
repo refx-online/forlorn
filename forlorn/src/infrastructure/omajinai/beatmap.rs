@@ -16,7 +16,7 @@ pub async fn api_get_beatmaps(
     s: Option<&i32>,
     b: Option<&i32>,
 ) -> Result<Option<Vec<BeatmapApiResponse>>> {
-    let url = format!("{}/get_beatmaps", config.beatmap_service_url);
+    let url = format!("{}/v1/get_beatmaps", config.beatmap_service_url);
     let mut params = vec![];
 
     if let Some(md5) = h {
