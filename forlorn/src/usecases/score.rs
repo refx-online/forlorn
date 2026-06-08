@@ -466,7 +466,7 @@ pub fn first_place_webhook(
         score.nmiss,
         score.max_combo,
         beatmap.max_combo,
-        score.mods().as_str(score.clock_rate)
+        score.mods().as_str(score.clock_rate())
     );
 
     #[allow(clippy::uninlined_format_args)]

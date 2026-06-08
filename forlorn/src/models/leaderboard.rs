@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, types::Json};
 
-use crate::models::{AimAssistType, MapleAimAssistValues};
+use crate::{
+    constants::Mods,
+    models::{AimAssistType, MapleAimAssistValues},
+};
 
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct LeaderboardScore {
@@ -47,6 +50,34 @@ impl LeaderboardScore {
         self.aim_assist_type
             .map(AimAssistType::from_i8)
             .unwrap_or_else(|| AimAssistType::None)
+    }
+
+    pub fn mods(&self) -> Mods {
+        Mods::from_bits(self.mods).unwrap_or_default()
+    }
+
+    /// this is god awful PLEASE FOR THE LOVE OF GOD REFACTOR THIS LATER
+    pub fn clock_rate(&self) -> f64 {
+        let Some(rate) = self.clock_rate else {
+            return -1.0;
+        };
+
+        if rate == 0.0 {
+            return -1.0;
+        }
+
+        let mods = self.mods();
+
+        // Hide if at default rate for rate-changing mods
+        if (mods.contains(Mods::DOUBLETIME) || mods.contains(Mods::NIGHTCORE)) && rate == 1.5 {
+            return -1.0;
+        }
+
+        if mods.contains(Mods::HALFTIME) && rate == 0.75 {
+            return -1.0;
+        }
+
+        rate
     }
 }
 

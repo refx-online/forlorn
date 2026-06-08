@@ -270,7 +270,7 @@ pub async fn submit_score(
     }
 
     if !submission.refx() && score.mods().conflict() {
-        let mods_str = score.mods().as_str(score.clock_rate);
+        let mods_str = score.mods().as_str(score.clock_rate());
         let _ = state
             .metrics
             .incr("score.mods_conflict", [format!("mods:{}", mods_str)]);
@@ -345,7 +345,7 @@ pub async fn submit_score(
             score.acc,
             score.nmiss,
             score.score,
-            score.clock_rate,
+            score.clock_rate, // doesn't need to use getter since it's handled in omajinai
         )
         .await;
 

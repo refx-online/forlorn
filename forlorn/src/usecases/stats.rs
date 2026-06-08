@@ -46,7 +46,12 @@ pub fn get_computed_playtime(score: &Score, beatmap: &Beatmap) -> u32 {
     } else {
         let mut time_elapsed = score.time_elapsed as f32 / 1000.0;
 
-        if score.mods().contains(Mods::DOUBLETIME) {
+        if score.clock_rate != -1.0 {
+            time_elapsed /= score.clock_rate as f32;
+        } else if score.timewarp_value != -1.0 {
+            time_elapsed /= score.timewarp_value / 100.0;
+        } else if score.mods().contains(Mods::DOUBLETIME) || score.mods().contains(Mods::NIGHTCORE)
+        {
             time_elapsed /= 1.5;
         } else if score.mods().contains(Mods::HALFTIME) {
             time_elapsed /= 0.75;

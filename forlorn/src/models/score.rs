@@ -216,6 +216,28 @@ impl Score {
 
         total_hits as u32
     }
+
+    pub fn clock_rate(&self) -> Option<f64> {
+        // handled here because im just not compiling the client again
+        if self.clock_rate == -1.0 || self.clock_rate == 0.0 {
+            return None;
+        }
+
+        let mods = self.mods();
+
+        // Hide if at default rate for rate-changing mods
+        if (mods.contains(Mods::DOUBLETIME) || mods.contains(Mods::NIGHTCORE))
+            && self.clock_rate == 1.5
+        {
+            return None;
+        }
+
+        if mods.contains(Mods::HALFTIME) && self.clock_rate == 0.75 {
+            return None;
+        }
+
+        Some(self.clock_rate)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
