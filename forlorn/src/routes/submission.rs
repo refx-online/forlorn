@@ -140,27 +140,27 @@ pub async fn submit_score(
     //       but for extra safety, maybe i should restrict them too?
     //       since they most likely spoofed `GameBase.ClientHash`.
 
-    if submission.refx() && osu_path_md5 != REFX_CURRENT_CLIENT_HASH {
-        let _ = state
-            .metrics
-            .incr("score.client_hash_flagged", ["status:ok"]);
+        if submission.refx() && osu_path_md5 != REFX_CURRENT_CLIENT_HASH {
+            let _ = state
+                .metrics
+                .incr("score.client_hash_flagged", ["status:ok"]);
 
-        tracing::warn!(
-            "{} submitted a score in outdated/modified re;fx client! ({} != {})",
-            user.name(),
-            osu_path_md5,
-            REFX_CURRENT_CLIENT_HASH,
-        );
+            tracing::warn!(
+                "{} submitted a score in outdated/modified re;fx client! ({} != {})",
+                user.name(),
+                osu_path_md5,
+                REFX_CURRENT_CLIENT_HASH,
+            );
 
-        {
-            let r = state.redis.clone();
-            tokio::spawn(async move {
-                let _ = notify::notify(&r, user.id, "Please update your client!").await;
-            });
+            {
+                let r = state.redis.clone();
+                tokio::spawn(async move {
+                    let _ = notify::notify(&r, user.id, "Please update your client!").await;
+                });
+            }
+
+            return (StatusCode::OK, b"error: no").into_response();
         }
-
-        return (StatusCode::OK, b"error: no").into_response();
-    }
 
     // same as above
     if submission.refx() && submission.auth_hash() != REFX_AUTH_HASH {
@@ -345,7 +345,12 @@ pub async fn submit_score(
             score.acc,
             score.nmiss,
             score.score,
-            score.clock_rate, // doesn't need to use getter since it's handled in omajinai
+            score.clock_rate,
+            Some(score.n300),
+            Some(score.n100),
+            Some(score.n50),
+            Some(score.ngeki),
+            Some(score.nkatu),
         )
         .await;
 

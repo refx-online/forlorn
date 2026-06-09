@@ -79,6 +79,11 @@ pub async fn get_calculate_map(
                 miss_count,
                 legacy_score,
                 clock_rate,
+                None,
+                None,
+                None,
+                None,
+                None,
             )
             .await;
 
@@ -110,6 +115,11 @@ pub async fn get_calculate_map(
         miss_count,
         legacy_score,
         clock_rate,
+        None,
+        None,
+        None,
+        None,
+        None,
     )
     .await;
 

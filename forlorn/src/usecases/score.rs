@@ -164,6 +164,11 @@ pub async fn calculate_performance(
     miss_count: i32,
     legacy_score: i32,
     clock_rate: f64,
+    n300: Option<i32>,
+    n100: Option<i32>,
+    n50: Option<i32>,
+    ngeki: Option<i32>,
+    nkatu: Option<i32>,
 ) -> (f32, f32, f32) {
     let request = PerformanceRequest {
         beatmap_id,
@@ -174,6 +179,11 @@ pub async fn calculate_performance(
         miss_count,
         legacy_score,
         clock_rate,
+        n300,
+        n100,
+        n50,
+        ngeki,
+        nkatu,
     };
 
     match calculate_pp(config, &request).await {
