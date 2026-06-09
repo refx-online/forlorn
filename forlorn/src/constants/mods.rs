@@ -88,8 +88,10 @@ impl Mods {
             if self.contains(flag) {
                 out.push_str(text);
 
-                if let Some(rate) = clock_rate {
-                    out.push_str(&format!("({:.2}x)", rate));
+                if matches!(flag, Mods::DOUBLETIME | Mods::NIGHTCORE | Mods::HALFTIME) {
+                    if let Some(rate) = clock_rate {
+                        out.push_str(&format!("({:.2}x)", rate));
+                    }
                 }
             }
         }
