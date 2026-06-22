@@ -13,7 +13,122 @@ use crate::{
     repository,
     state::AppState,
     usecases::{achievement::check_and_unlock_achievements, leaderboard::format_score_line},
+    constants::{Mods, GameMode},
 };
+
+const DATETIME_OFFSET: i64 = 621_355_968_000_000_000;
+
+pub fn write_osu_string(buf: &mut Vec<u8>, s: &str) {
+    if s.is_empty() {
+        buf.push(0x00);
+        return;
+    }
+    buf.push(0x0b);
+    let len = s.len();
+    if len < 0x80 {
+        buf.push(len as u8);
+    } else {
+        let mut remaining = len;
+        loop {
+            let mut byte = (remaining & 0x7f) as u8;
+            remaining >>= 7;
+            if remaining > 0 {
+                byte |= 0x80;
+            }
+            buf.push(byte);
+            if remaining == 0 {
+                break;
+            }
+        }
+    }
+    buf.extend_from_slice(s.as_bytes());
+}
+
+pub fn build_osr_replay(
+    raw_replay: &[u8],
+    mode: i32,
+    n300: i32,
+    n100: i32,
+    n50: i32,
+    ngeki: i32,
+    nkatu: i32,
+    nmiss: i32,
+    score: i32,
+    max_combo: i32,
+    perfect: bool,
+    mods: i32,
+    play_time: chrono::DateTime<chrono::Utc>,
+    score_id: u64,
+    map_md5: &str,
+    username: &str,
+) -> Vec<u8> {
+    let mut buf = Vec::with_capacity(256 + raw_replay.len());
+
+    // game mode (vanilla)
+    let gm = GameMode::from_params(mode, Mods::from_bits_truncate(mods));
+    buf.push(gm.as_vanilla() as u8);
+    // osu! client version
+    buf.extend_from_slice(&20200207i32.to_le_bytes());
+    // beatmap md5
+    write_osu_string(&mut buf, map_md5);
+    // player name
+    write_osu_string(&mut buf, username);
+    // replay md5
+    write_osu_string(&mut buf, &compute_replay_md5_raw(n300, n100, n50, ngeki, nkatu, nmiss, score, max_combo, perfect, mods, map_md5, username));
+    // hit counts (short / i16)
+    buf.extend_from_slice(&(n300 as i16).to_le_bytes());
+    buf.extend_from_slice(&(n100 as i16).to_le_bytes());
+    buf.extend_from_slice(&(n50 as i16).to_le_bytes());
+    buf.extend_from_slice(&(ngeki as i16).to_le_bytes());
+    buf.extend_from_slice(&(nkatu as i16).to_le_bytes());
+    buf.extend_from_slice(&(nmiss as i16).to_le_bytes());
+    // total score
+    buf.extend_from_slice(&score.to_le_bytes());
+    // max combo
+    buf.extend_from_slice(&(max_combo as i16).to_le_bytes());
+    // perfect
+    buf.push(if perfect { 1u8 } else { 0u8 });
+    // mods
+    buf.extend_from_slice(&mods.to_le_bytes());
+    // life bar graph (empty string ⇒ 0x00)
+    buf.push(0x00);
+    // play date (Windows NT ticks)
+    let ticks = (play_time.timestamp() as i64 * 10_000_000) + DATETIME_OFFSET;
+    buf.extend_from_slice(&ticks.to_le_bytes());
+    // replay data length + data
+    buf.extend_from_slice(&(raw_replay.len() as i32).to_le_bytes());
+    buf.extend_from_slice(raw_replay);
+    // online score id
+    buf.extend_from_slice(&(score_id as i64).to_le_bytes());
+
+    buf
+}
+
+fn compute_replay_md5_raw(
+    n300: i32, n100: i32, n50: i32, ngeki: i32, nkatu: i32, nmiss: i32,
+    score: i32, max_combo: i32, perfect: bool, mods: i32,
+    map_md5: &str, username: &str,
+) -> String {
+    let input = format!(
+        "{}p{}o{}o{}t{}a{}r{}e{}y{}o{}u{}{}{}",
+        n100 + n300,
+        n50,
+        ngeki,
+        nkatu,
+        nmiss,
+        map_md5,
+        max_combo,
+        if perfect { "True" } else { "False" },
+        username,
+        score,
+        0,
+        mods,
+        "True",
+    );
+    let mut hasher = Md5::new();
+    hasher.update(input.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
 
 // todo: trait
 
