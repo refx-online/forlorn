@@ -8,12 +8,7 @@ pub async fn restrict(
 ) -> anyhow::Result<()> {
     tracing::warn!("Restricted user id {userid} for {reason}");
 
-    publish(
-        redis,
-        "refx:restrict",
-        &format!("{}|{}", userid, reason),
-    )
-    .await?;
+    publish(redis, "refx:restrict", &format!("{}|{}", userid, reason)).await?;
 
     Ok(())
 }

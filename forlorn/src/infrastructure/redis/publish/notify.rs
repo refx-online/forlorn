@@ -7,12 +7,7 @@ pub async fn notify(
     userid: i32,
     message: &str,
 ) -> anyhow::Result<()> {
-    publish(
-        redis,
-        "refx:notify",
-        &format!("{}|{}", userid, message),
-    )
-    .await?;
+    publish(redis, "refx:notify", &format!("{}|{}", userid, message)).await?;
 
     Ok(())
 }
