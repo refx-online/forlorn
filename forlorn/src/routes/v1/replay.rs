@@ -1,10 +1,11 @@
-use crate::utils::{build_osr_replay, generate_lazer_info};
 use axum::{
     body::Body,
     extract::{Query, State},
     http::{HeaderName, StatusCode, header},
     response::{IntoResponse, Response},
 };
+
+use crate::utils::{build_osr_replay, generate_lazer_info};
 
 const CONTENT_DESCRIPTION: HeaderName = HeaderName::from_static("content-description");
 use sqlx::Row;
@@ -78,8 +79,15 @@ pub async fn get_replay(
     let lazer_info = if mode >= 12 {
         Some(generate_lazer_info(
             replay.score_id,
-            mode, mods, clock_rate,
-            n300, n100, n50, ngeki, nkatu, nmiss,
+            mode,
+            mods,
+            clock_rate,
+            n300,
+            n100,
+            n50,
+            ngeki,
+            nkatu,
+            nmiss,
         ))
     } else {
         None

@@ -1,3 +1,4 @@
+pub mod beatmap_service;
 pub mod database;
 pub mod datadog;
 pub mod omajinai;

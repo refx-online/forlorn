@@ -14,7 +14,10 @@ use webhook::Webhook;
 use crate::{
     constants::{Grade, REFX_AUTH_HASH, REFX_CURRENT_CLIENT_HASH, RankedStatus, SubmissionStatus},
     dto::submission::{ScoreHeader, ScoreSubmission},
-    infrastructure::redis::publish::{announce, notify, refresh_stats, restrict, score},
+    infrastructure::{
+        beatmap_service,
+        redis::publish::{announce, notify, refresh_stats, restrict, score},
+    },
     models::{Score, User},
     repository,
     state::AppState,
@@ -142,27 +145,27 @@ pub async fn submit_score(
     //       but for extra safety, maybe i should restrict them too?
     //       since they most likely spoofed `GameBase.ClientHash`.
 
-        if submission.refx() && osu_path_md5 != REFX_CURRENT_CLIENT_HASH {
-            let _ = state
-                .metrics
-                .incr("score.client_hash_flagged", ["status:ok"]);
+    if submission.refx() && osu_path_md5 != REFX_CURRENT_CLIENT_HASH {
+        let _ = state
+            .metrics
+            .incr("score.client_hash_flagged", ["status:ok"]);
 
-            tracing::warn!(
-                "{} submitted a score in outdated/modified re;fx client! ({} != {})",
-                user.name(),
-                osu_path_md5,
-                REFX_CURRENT_CLIENT_HASH,
-            );
+        tracing::warn!(
+            "{} submitted a score in outdated/modified re;fx client! ({} != {})",
+            user.name(),
+            osu_path_md5,
+            REFX_CURRENT_CLIENT_HASH,
+        );
 
-            {
-                let r = state.redis.clone();
-                tokio::spawn(async move {
-                    let _ = notify::notify(&r, user.id, "Please update your client!").await;
-                });
-            }
-
-            return (StatusCode::OK, b"error: no").into_response();
+        {
+            let r = state.redis.clone();
+            tokio::spawn(async move {
+                let _ = notify::notify(&r, user.id, "Please update your client!").await;
+            });
         }
+
+        return (StatusCode::OK, b"error: no").into_response();
+    }
 
     // same as above
     if submission.refx() && submission.auth_hash() != REFX_AUTH_HASH {
@@ -204,16 +207,27 @@ pub async fn submit_score(
         }
     }
 
-    let beatmap =
-        match repository::beatmap::fetch_by_md5(&state.config, &state.db, &score_header.map_md5)
-            .await
-        {
-            Ok(Some(beatmap)) => beatmap,
-            _ => {
-                tracing::warn!("beatmap not found for md5: {}", score_header.map_md5);
-                return (StatusCode::OK, b"error: beatmap").into_response();
-            },
-        };
+    let beatmap = match beatmap_service::fetch_beatmap_with_lifecycle(
+        &state.config.omajinai.beatmap_service_url,
+        &score_header.map_md5,
+        None,
+    )
+    .await
+    {
+        Ok(beatmap_service::BeatmapLifecycleStatus::Available(boxed_beatmap)) => *boxed_beatmap,
+        Ok(beatmap_service::BeatmapLifecycleStatus::Unsubmitted) => {
+            tracing::warn!("beatmap unsubmitted: {}", score_header.map_md5);
+            return (StatusCode::OK, b"error: beatmap").into_response();
+        },
+        Ok(beatmap_service::BeatmapLifecycleStatus::UpdateRequired) => {
+            tracing::warn!("beatmap update required: {}", score_header.map_md5);
+            return (StatusCode::OK, b"error: beatmap").into_response();
+        },
+        Err(e) => {
+            tracing::warn!("beatmap service error: {}", e);
+            return (StatusCode::OK, b"error: beatmap").into_response();
+        },
+    };
 
     let mut score = match Score::from_submission(&score_data[2..], score_header.map_md5, user.id) {
         Some(score) => score,
@@ -296,12 +310,15 @@ pub async fn submit_score(
         return (StatusCode::OK, b"error: no").into_response();
     }
 
-    match ensure_osu_file(&state.config.omajinai, &beatmap).await {
-        Ok(true) => {},
-        _ => {
-            tracing::warn!("ensure_osu_file failed for beatmap id: {}", beatmap.id);
-            return (StatusCode::OK, b"error: no").into_response();
-        },
+    let osu_file_available = ensure_osu_file(&state.config.omajinai, &beatmap)
+        .await
+        .unwrap_or(false);
+
+    if !osu_file_available {
+        tracing::warn!(
+            "ensure_osu_file failed for beatmap id: {}, continuing without PP calculation",
+            beatmap.id
+        );
     }
 
     let _submission_lock_ = match state

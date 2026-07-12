@@ -140,41 +140,6 @@ async fn md5_from_api(config: &Config, db: &DbPoolManager, md5: &str) -> Result<
     let resp = match api_get_beatmaps(&config.omajinai, Some(md5), None, None).await? {
         Some(r) if !r.is_empty() => r,
         _ => {
-            // API returned 404, map deleted.
-            // we can safe to assume that the map is deleted, we should delete them in db.
-            let set_id_opt: Option<i32> =
-                sqlx::query_scalar("select set_id from maps where md5 = ?")
-                    .bind(md5)
-                    .fetch_optional(db.as_ref())
-                    .await?;
-
-            if let Some(set_id) = set_id_opt {
-                sqlx::query("delete from scores where map_md5 = ?")
-                    .bind(md5)
-                    .execute(db.as_ref())
-                    .await?;
-
-                sqlx::query("delete from maps where md5 = ?")
-                    .bind(md5)
-                    .execute(db.as_ref())
-                    .await?;
-
-                let remaining: i64 =
-                    sqlx::query_scalar("select count(*) from maps where set_id = ?")
-                        .bind(set_id)
-                        .fetch_one(db.as_ref())
-                        .await?;
-
-                if remaining == 0 {
-                    sqlx::query("delete from mapsets where id = ?")
-                        .bind(set_id)
-                        .execute(db.as_ref())
-                        .await?;
-                }
-                let mut cache = BEATMAP_CACHE.write().await;
-                cache.remove(md5);
-            }
-
             return Ok(None);
         },
     };
@@ -435,42 +400,10 @@ async fn id_from_api(config: &Config, db: &DbPoolManager, map_id: &i32) -> Resul
     let resp = match api_get_beatmaps(&config.omajinai, None, None, Some(map_id)).await? {
         Some(r) if !r.is_empty() => r,
         _ => {
-            // API returned 404, map deleted.
-            // we can safe to assume that the map is deleted, we should delete them in db.
-            let set_id_opt: Option<(i32, String)> =
-                sqlx::query_as("select set_id, map_md5 from maps where id = ?")
-                    .bind(map_id)
-                    .fetch_optional(db.as_ref())
-                    .await?;
-
-            if let Some((set_id, map_md5)) = set_id_opt {
-                sqlx::query("delete from scores where map_md5 = ?")
-                    .bind(map_md5)
-                    .execute(db.as_ref())
-                    .await?;
-
-                sqlx::query("delete from maps where id = ?")
-                    .bind(map_id)
-                    .execute(db.as_ref())
-                    .await?;
-
-                let remaining: i64 =
-                    sqlx::query_scalar("select count(*) from maps where set_id = ?")
-                        .bind(set_id)
-                        .fetch_one(db.as_ref())
-                        .await?;
-
-                if remaining == 0 {
-                    sqlx::query("delete from mapsets where id = ?")
-                        .bind(set_id)
-                        .execute(db.as_ref())
-                        .await?;
-                }
-
-                let mut cache = BEATMAP_CACHE.write().await;
-                cache.remove(&map_id.to_string());
-            }
-
+            tracing::warn!(
+                "id_from_api: beatmap not found via API (transient or missing) id={}",
+                map_id
+            );
             return Ok(None);
         },
     };

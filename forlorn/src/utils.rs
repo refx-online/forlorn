@@ -2,24 +2,24 @@ use std::collections::HashMap;
 
 use axum::body::Bytes;
 use md5::{Digest, Md5};
+use serde::Serialize;
 use tokio::signal::{
     self,
     unix::{self, SignalKind},
 };
 
-use serde::Serialize;
-
 use crate::{
+    constants::{GameMode, Mods},
     dto::{error::GetError, screenshot::ScreenshotUpload, submission::ScoreSubmission},
     models::{Beatmap, LeaderboardScore, MapleAimAssistValues, PersonalBest, Score, Stats, User},
     repository,
     state::AppState,
     usecases::{achievement::check_and_unlock_achievements, leaderboard::format_score_line},
-    constants::{Mods, GameMode},
 };
 
 const DATETIME_OFFSET: i64 = 621_355_968_000_000_000;
 
+#[allow(clippy::too_many_arguments)]
 pub fn generate_lazer_info(
     score_id: u64,
     mode: i32,
@@ -60,16 +60,36 @@ pub fn generate_lazer_info(
     let speed = if clock_rate > 0.0 { clock_rate } else { 1.0 };
 
     const MOD_ENTRIES: &[(Mods, &str)] = &[
-        (Mods::NOFAIL, "NF"), (Mods::EASY, "EZ"), (Mods::TOUCHSCREEN, "TD"),
-        (Mods::HIDDEN, "HD"), (Mods::HARDROCK, "HR"), (Mods::SUDDENDEATH, "SD"),
-        (Mods::DOUBLETIME, "DT"), (Mods::RELAX, "RX"), (Mods::HALFTIME, "HT"),
-        (Mods::NIGHTCORE, "NC"), (Mods::FLASHLIGHT, "FL"), (Mods::AUTOPLAY, "AT"),
-        (Mods::SPUNOUT, "SO"), (Mods::AUTOPILOT, "AP"), (Mods::PERFECT, "PF"),
-        (Mods::KEY4, "K4"), (Mods::KEY5, "K5"), (Mods::KEY6, "K6"),
-        (Mods::KEY7, "K7"), (Mods::KEY8, "K8"), (Mods::FADEIN, "FI"),
-        (Mods::RANDOM, "RD"), (Mods::CINEMA, "CN"), (Mods::TARGET, "TP"),
-        (Mods::KEY9, "K9"), (Mods::KEYCOOP, "KC"), (Mods::KEY1, "K1"),
-        (Mods::KEY3, "K3"), (Mods::KEY2, "K2"), (Mods::SCOREV2, "V2"),
+        (Mods::NOFAIL, "NF"),
+        (Mods::EASY, "EZ"),
+        (Mods::TOUCHSCREEN, "TD"),
+        (Mods::HIDDEN, "HD"),
+        (Mods::HARDROCK, "HR"),
+        (Mods::SUDDENDEATH, "SD"),
+        (Mods::DOUBLETIME, "DT"),
+        (Mods::RELAX, "RX"),
+        (Mods::HALFTIME, "HT"),
+        (Mods::NIGHTCORE, "NC"),
+        (Mods::FLASHLIGHT, "FL"),
+        (Mods::AUTOPLAY, "AT"),
+        (Mods::SPUNOUT, "SO"),
+        (Mods::AUTOPILOT, "AP"),
+        (Mods::PERFECT, "PF"),
+        (Mods::KEY4, "K4"),
+        (Mods::KEY5, "K5"),
+        (Mods::KEY6, "K6"),
+        (Mods::KEY7, "K7"),
+        (Mods::KEY8, "K8"),
+        (Mods::FADEIN, "FI"),
+        (Mods::RANDOM, "RD"),
+        (Mods::CINEMA, "CN"),
+        (Mods::TARGET, "TP"),
+        (Mods::KEY9, "K9"),
+        (Mods::KEYCOOP, "KC"),
+        (Mods::KEY1, "K1"),
+        (Mods::KEY3, "K3"),
+        (Mods::KEY2, "K2"),
+        (Mods::SCOREV2, "V2"),
         (Mods::MIRROR, "MR"),
     ];
 
@@ -129,7 +149,7 @@ pub fn generate_lazer_info(
             let total = ngeki + n300 + nkatu + n100 + n50 + nmiss;
             maximum_statistics.insert("perfect".into(), total as i64);
         },
-        _ => {}
+        _ => {},
     }
 
     let info = ScoreInfo {
@@ -171,6 +191,7 @@ pub fn write_osu_string(buf: &mut Vec<u8>, s: &str) {
     buf.extend_from_slice(s.as_bytes());
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_osr_replay(
     raw_replay: &[u8],
     mode: i32,
@@ -208,7 +229,13 @@ pub fn build_osr_replay(
     // player name
     write_osu_string(&mut buf, username);
     // replay md5
-    write_osu_string(&mut buf, &compute_replay_md5_raw(n300, n100, n50, ngeki, nkatu, nmiss, score, max_combo, perfect, mods, map_md5, username));
+    write_osu_string(
+        &mut buf,
+        &compute_replay_md5_raw(
+            n300, n100, n50, ngeki, nkatu, nmiss, score, max_combo, perfect, mods, map_md5,
+            username,
+        ),
+    );
     // hit counts (short / i16)
     buf.extend_from_slice(&(n300 as i16).to_le_bytes());
     buf.extend_from_slice(&(n100 as i16).to_le_bytes());
@@ -227,7 +254,7 @@ pub fn build_osr_replay(
     // life bar graph (empty string ⇒ 0x00)
     buf.push(0x00);
     // play date (Windows NT ticks)
-    let ticks = (play_time.timestamp() as i64 * 10_000_000) + DATETIME_OFFSET;
+    let ticks = (play_time.timestamp() * 10_000_000) + DATETIME_OFFSET;
     buf.extend_from_slice(&ticks.to_le_bytes());
     // replay data length + data
     buf.extend_from_slice(&(raw_replay.len() as i32).to_le_bytes());
@@ -243,10 +270,20 @@ pub fn build_osr_replay(
     buf
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compute_replay_md5_raw(
-    n300: i32, n100: i32, n50: i32, ngeki: i32, nkatu: i32, nmiss: i32,
-    score: i32, max_combo: i32, perfect: bool, mods: i32,
-    map_md5: &str, username: &str,
+    n300: i32,
+    n100: i32,
+    n50: i32,
+    ngeki: i32,
+    nkatu: i32,
+    nmiss: i32,
+    score: i32,
+    max_combo: i32,
+    perfect: bool,
+    mods: i32,
+    map_md5: &str,
+    username: &str,
 ) -> String {
     let input = format!(
         "{}p{}o{}o{}t{}a{}r{}e{}y{}o{}u{}{}{}",

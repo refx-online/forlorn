@@ -1,6 +1,9 @@
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
-use dashmap::DashSet;
+use dashmap::DashMap;
 use dogstatsd::Client as DatadogClient;
 use rslock::LockManager;
 use storage::Storage;
@@ -22,8 +25,6 @@ pub struct AppState {
     pub subscriber: RedisPubsubManager,
     pub score_locks: LockManager,
     pub metrics: Arc<DatadogClient>,
-    pub unsubmitted_maps: Arc<DashSet<String>>,
-    pub needs_update_maps: Arc<DashSet<String>>,
 }
 
 impl AppState {
@@ -44,8 +45,6 @@ impl AppState {
             subscriber,
             score_locks,
             metrics,
-            unsubmitted_maps: Arc::new(DashSet::new()),
-            needs_update_maps: Arc::new(DashSet::new()),
         }
     }
 }

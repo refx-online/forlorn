@@ -9,6 +9,7 @@ use axum::{
 use crate::{
     constants::{LeaderboardType, RankedStatus},
     dto::leaderboard::GetScores,
+    infrastructure::beatmap_service,
     models::{PersonalBest, User},
     repository,
     state::AppState,
@@ -31,32 +32,6 @@ async fn authenticate_user(
     match verify_password(password_md5, &user.pw_bcrypt).await {
         Ok(true) => Ok(user),
         _ => Err(StatusCode::OK.into_response()),
-    }
-}
-
-async fn handle_missing_beatmap(state: &AppState, leaderboard: &GetScores) -> Response {
-    let has_set_id = leaderboard.map_set_id > 0;
-
-    if !has_set_id {
-        state.unsubmitted_maps.insert(leaderboard.map_md5.clone());
-
-        return (StatusCode::OK, b"-1|false").into_response();
-    }
-
-    let map_exists = repository::beatmap::fetch_by_filename(&state.db, &leaderboard.map_filename)
-        .await
-        .ok()
-        .flatten()
-        .is_some();
-
-    if map_exists {
-        state.needs_update_maps.insert(leaderboard.map_md5.clone());
-
-        (StatusCode::OK, b"1|false").into_response()
-    } else {
-        state.unsubmitted_maps.insert(leaderboard.map_md5.clone());
-
-        (StatusCode::OK, b"-1|false").into_response()
     }
 }
 
@@ -90,13 +65,6 @@ pub async fn get_scores(
 
     let now = Instant::now();
 
-    if state.unsubmitted_maps.contains(&leaderboard.map_md5) {
-        return (StatusCode::OK, b"-1|false").into_response();
-    }
-    if state.needs_update_maps.contains(&leaderboard.map_md5) {
-        return (StatusCode::OK, b"1|false").into_response();
-    }
-
     let user =
         match authenticate_user(&state, &leaderboard.password_md5, &leaderboard.username).await {
             Ok(user) => user,
@@ -107,16 +75,22 @@ pub async fn get_scores(
 
     let leaderboard_type = LeaderboardType::from_i32(leaderboard.leaderboard_type);
 
-    let beatmap =
-        match repository::beatmap::fetch_by_md5(&state.config, &state.db, &leaderboard.map_md5)
-            .await
-        {
-            Ok(Some(beatmap)) => beatmap,
-            Ok(None) => {
-                return handle_missing_beatmap(&state, &leaderboard).await;
-            },
-            Err(_) => return (StatusCode::OK, b"error: db").into_response(),
-        };
+    let beatmap = match beatmap_service::fetch_beatmap_with_lifecycle(
+        &state.config.omajinai.beatmap_service_url,
+        &leaderboard.map_md5,
+        Some(&leaderboard.map_filename),
+    )
+    .await
+    {
+        Ok(beatmap_service::BeatmapLifecycleStatus::Available(boxed_beatmap)) => *boxed_beatmap,
+        Ok(beatmap_service::BeatmapLifecycleStatus::Unsubmitted) => {
+            return (StatusCode::OK, b"-1|false").into_response();
+        },
+        Ok(beatmap_service::BeatmapLifecycleStatus::UpdateRequired) => {
+            return (StatusCode::OK, b"1|false").into_response();
+        },
+        Err(_) => return (StatusCode::OK, b"error: service").into_response(),
+    };
 
     let _ = state.metrics.incr("leaderboard.served", ["status:ok"]);
 

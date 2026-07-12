@@ -29,9 +29,6 @@ pub struct GetScores {
     #[serde(rename = "m")]
     pub mode: i32,
 
-    #[serde(rename = "i")]
-    pub map_set_id: i32,
-
     #[serde(rename = "mods")]
     pub mods: i32,
 
