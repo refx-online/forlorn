@@ -1,9 +1,5 @@
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::sync::Arc;
 
-use dashmap::DashMap;
 use dogstatsd::Client as DatadogClient;
 use rslock::LockManager;
 use storage::Storage;
