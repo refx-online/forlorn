@@ -10,7 +10,7 @@ pub async fn notify(
     publish(
         redis,
         "refx:notify",
-        &format!("{}|{}", &userid.to_string(), message),
+        &format!("{}|{}", userid, message),
     )
     .await?;
 

@@ -11,7 +11,7 @@ pub async fn restrict(
     publish(
         redis,
         "refx:restrict",
-        &format!("{}|{}", &userid.to_string(), reason),
+        &format!("{}|{}", userid, reason),
     )
     .await?;
 
