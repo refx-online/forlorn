@@ -7,6 +7,8 @@ use tokio::signal::{
     unix::{self, SignalKind},
 };
 
+use serde::Serialize;
+
 use crate::{
     dto::{error::GetError, screenshot::ScreenshotUpload, submission::ScoreSubmission},
     models::{Beatmap, LeaderboardScore, MapleAimAssistValues, PersonalBest, Score, Stats, User},
@@ -17,6 +19,131 @@ use crate::{
 };
 
 const DATETIME_OFFSET: i64 = 621_355_968_000_000_000;
+
+pub fn generate_lazer_info(
+    score_id: u64,
+    mode: i32,
+    mods: i32,
+    clock_rate: f64,
+    n300: i32,
+    n100: i32,
+    n50: i32,
+    ngeki: i32,
+    nkatu: i32,
+    nmiss: i32,
+) -> Vec<u8> {
+    #[derive(Serialize)]
+    struct ApiMod {
+        acronym: String,
+        #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+        settings: HashMap<String, serde_json::Value>,
+    }
+
+    #[derive(Serialize)]
+    struct ScoreInfo {
+        online_id: i64,
+        mods: Vec<ApiMod>,
+        statistics: HashMap<String, i64>,
+        maximum_statistics: HashMap<String, i64>,
+    }
+
+    let mut mod_list = Vec::new();
+
+    if mode >= 12 {
+        mod_list.push(ApiMod {
+            acronym: "CL".into(),
+            settings: HashMap::new(),
+        });
+    }
+
+    let mod_bits = Mods::from_bits_truncate(mods);
+    let speed = if clock_rate > 0.0 { clock_rate } else { 1.0 };
+
+    const MOD_ENTRIES: &[(Mods, &str)] = &[
+        (Mods::NOFAIL, "NF"), (Mods::EASY, "EZ"), (Mods::TOUCHSCREEN, "TD"),
+        (Mods::HIDDEN, "HD"), (Mods::HARDROCK, "HR"), (Mods::SUDDENDEATH, "SD"),
+        (Mods::DOUBLETIME, "DT"), (Mods::RELAX, "RX"), (Mods::HALFTIME, "HT"),
+        (Mods::NIGHTCORE, "NC"), (Mods::FLASHLIGHT, "FL"), (Mods::AUTOPLAY, "AT"),
+        (Mods::SPUNOUT, "SO"), (Mods::AUTOPILOT, "AP"), (Mods::PERFECT, "PF"),
+        (Mods::KEY4, "K4"), (Mods::KEY5, "K5"), (Mods::KEY6, "K6"),
+        (Mods::KEY7, "K7"), (Mods::KEY8, "K8"), (Mods::FADEIN, "FI"),
+        (Mods::RANDOM, "RD"), (Mods::CINEMA, "CN"), (Mods::TARGET, "TP"),
+        (Mods::KEY9, "K9"), (Mods::KEYCOOP, "KC"), (Mods::KEY1, "K1"),
+        (Mods::KEY3, "K3"), (Mods::KEY2, "K2"), (Mods::SCOREV2, "V2"),
+        (Mods::MIRROR, "MR"),
+    ];
+
+    let skip_dt = mod_bits.contains(Mods::NIGHTCORE);
+
+    for &(flag, acronym) in MOD_ENTRIES {
+        if skip_dt && flag == Mods::DOUBLETIME {
+            continue;
+        }
+        if !mod_bits.contains(flag) {
+            continue;
+        }
+
+        let mut settings = HashMap::new();
+        if matches!(flag, Mods::DOUBLETIME | Mods::NIGHTCORE | Mods::HALFTIME) {
+            settings.insert("speed_change".into(), serde_json::Value::from(speed));
+        }
+        mod_list.push(ApiMod { acronym: acronym.into(), settings });
+    }
+
+    let vanilla_mode = GameMode::from_params(mode, mod_bits).as_vanilla();
+    let mut statistics = HashMap::new();
+    let mut maximum_statistics = HashMap::new();
+
+    match vanilla_mode {
+        0 => {
+            statistics.insert("great".into(), n300 as i64);
+            statistics.insert("ok".into(), n100 as i64);
+            statistics.insert("meh".into(), n50 as i64);
+            statistics.insert("miss".into(), nmiss as i64);
+            let total = n300 + n100 + n50 + nmiss;
+            maximum_statistics.insert("great".into(), total as i64);
+        },
+        1 => {
+            statistics.insert("great".into(), n300 as i64);
+            statistics.insert("ok".into(), n100 as i64);
+            statistics.insert("miss".into(), nmiss as i64);
+            let total = n300 + n100 + nmiss;
+            maximum_statistics.insert("great".into(), total as i64);
+        },
+        2 => {
+            statistics.insert("great".into(), n300 as i64);
+            statistics.insert("large_tick_hit".into(), n100 as i64);
+            statistics.insert("small_tick_hit".into(), n50 as i64);
+            statistics.insert("small_tick_miss".into(), nkatu as i64);
+            statistics.insert("miss".into(), nmiss as i64);
+            let total = n300 + n100 + n50 + nkatu + nmiss;
+            maximum_statistics.insert("great".into(), total as i64);
+        },
+        3 => {
+            statistics.insert("perfect".into(), ngeki as i64);
+            statistics.insert("great".into(), n300 as i64);
+            statistics.insert("good".into(), nkatu as i64);
+            statistics.insert("ok".into(), n100 as i64);
+            statistics.insert("meh".into(), n50 as i64);
+            statistics.insert("miss".into(), nmiss as i64);
+            let total = ngeki + n300 + nkatu + n100 + n50 + nmiss;
+            maximum_statistics.insert("perfect".into(), total as i64);
+        },
+        _ => {}
+    }
+
+    let info = ScoreInfo {
+        online_id: score_id as i64,
+        mods: mod_list,
+        statistics,
+        maximum_statistics,
+    };
+
+    let json = serde_json::to_vec(&info).expect("lazer info serialization");
+    let mut compressed = Vec::new();
+    lzma_rs::lzma_compress(&mut &json[..], &mut compressed).expect("lzma compression");
+    compressed
+}
 
 pub fn write_osu_string(buf: &mut Vec<u8>, s: &str) {
     if s.is_empty() {
@@ -61,14 +188,21 @@ pub fn build_osr_replay(
     score_id: u64,
     map_md5: &str,
     username: &str,
+    lazer_data: Option<&[u8]>,
 ) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(256 + raw_replay.len());
+    let lazer_len = lazer_data.map_or(0, |d| d.len());
+    let mut buf = Vec::with_capacity(256 + raw_replay.len() + lazer_len);
 
     // game mode (vanilla)
     let gm = GameMode::from_params(mode, Mods::from_bits_truncate(mods));
     buf.push(gm.as_vanilla() as u8);
     // osu! client version
-    buf.extend_from_slice(&20200207i32.to_le_bytes());
+    // Version >= 30000001 signals additional_info block after online_score_id
+    if lazer_data.is_some() {
+        buf.extend_from_slice(&30000001i32.to_le_bytes());
+    } else {
+        buf.extend_from_slice(&20200207i32.to_le_bytes());
+    }
     // beatmap md5
     write_osu_string(&mut buf, map_md5);
     // player name
@@ -100,6 +234,11 @@ pub fn build_osr_replay(
     buf.extend_from_slice(raw_replay);
     // online score id
     buf.extend_from_slice(&(score_id as i64).to_le_bytes());
+    // additional info
+    if let Some(lzr) = lazer_data {
+        buf.extend_from_slice(&(lzr.len() as i32).to_le_bytes());
+        buf.extend_from_slice(lzr);
+    }
 
     buf
 }

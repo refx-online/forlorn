@@ -90,23 +90,56 @@ impl Storage {
         }
     }
 
-    pub async fn save_replay(&self, score_id: u64, data: &[u8]) -> Result<()> {
+    pub async fn save_replay(&self, score_id: u64, frames: &[u8], lazer: Option<&[u8]>) -> Result<()> {
+        let mut data = Vec::with_capacity(4 + frames.len() + lazer.map_or(0, |l| l.len()));
+        // prefix: i32 frame length
+        data.extend_from_slice(&(frames.len() as i32).to_le_bytes());
+        data.extend_from_slice(frames);
+        if let Some(l) = lazer {
+            data.extend_from_slice(l);
+        }
         if let Some(r2) = &self.r2 {
             r2.upload(
                 &self.replay_key(score_id),
-                data,
+                &data,
                 None,
                 Some("application/octet-stream"),
             )
             .await;
         } else {
-            fs::write(self.replay_file(score_id), data)?;
+            fs::write(self.replay_file(score_id), &data)?;
         }
-
         Ok(())
     }
 
     pub async fn load_replay(&self, score_id: u64) -> Result<Vec<u8>> {
+        let data = self.read_replay_raw(score_id).await?;
+        // peel off 4-byte frame length prefix if present
+        if data.len() >= 4 {
+            let frame_len = i32::from_le_bytes([data[0], data[1], data[2], data[3]]) as usize;
+            if 4 + frame_len <= data.len() {
+                return Ok(data[4..4 + frame_len].to_vec());
+            }
+        }
+        // old format: whole file is frames
+        Ok(data)
+    }
+
+    pub async fn load_replay_with_lazer(&self, score_id: u64) -> Result<(Vec<u8>, Option<Vec<u8>>)> {
+        let data = self.read_replay_raw(score_id).await?;
+        if data.len() >= 4 {
+            let frame_len = i32::from_le_bytes([data[0], data[1], data[2], data[3]]) as usize;
+            if 4 + frame_len <= data.len() {
+                let frames = data[4..4 + frame_len].to_vec();
+                let lazer = data[4 + frame_len..].to_vec();
+                return Ok((frames, if lazer.is_empty() { None } else { Some(lazer) }));
+            }
+        }
+        // old format
+        Ok((data, None))
+    }
+
+    async fn read_replay_raw(&self, score_id: u64) -> Result<Vec<u8>> {
         if let Some(r2) = &self.r2 {
             match r2.get(&self.replay_key(score_id)).await {
                 Some(replay) => Ok(replay),

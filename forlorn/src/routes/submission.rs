@@ -60,6 +60,8 @@ async fn parse_typed_multipart(multipart: &mut Multipart) -> Result<ScoreSubmiss
 
         match name.as_str() {
             "score" => score_fields.push(content.to_vec()),
+            // NOTE: preserved for client
+            //       this is actually should be removed but im just too god damn lazy to remove it on the client side
             "lazer" => lazer_data = Some(content.to_vec()),
             _ => {
                 fields.insert(name, content);
@@ -451,11 +453,9 @@ pub async fn submit_score(
 
             if submission.replay_file.len() >= MIN_REPLAY_SIZE {
                 let mut full_replay = submission.replay_file.clone();
-
                 if !submission.lazer_data.is_empty() && submission.refx() {
                     full_replay.extend_from_slice(&submission.lazer_data);
                 }
-
                 let _ = state.storage.save_replay(score.id, &full_replay).await;
             } else {
                 let r = state.redis.clone();

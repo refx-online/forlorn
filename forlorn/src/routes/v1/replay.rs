@@ -1,4 +1,4 @@
-use crate::utils::build_osr_replay;
+use crate::utils::{build_osr_replay, generate_lazer_info};
 use axum::{
     body::Body,
     extract::{Query, State},
@@ -37,7 +37,7 @@ pub async fn get_replay(
          m.artist, m.title, m.version, \
          s.mode, s.n300, s.n100, s.n50, s.ngeki, \
          s.nkatu, s.nmiss, s.score, s.max_combo, \
-         s.perfect, s.mods, s.play_time \
+         s.perfect, s.mods, s.play_time, s.clock_rate \
          FROM scores s \
          INNER JOIN users u ON u.id = s.userid \
          INNER JOIN maps m ON m.md5 = s.map_md5 \
@@ -73,6 +73,17 @@ pub async fn get_replay(
     let artist: String = row.get("artist");
     let title: String = row.get("title");
     let version: String = row.get("version");
+    let clock_rate: f64 = row.get("clock_rate");
+
+    let lazer_info = if mode >= 12 {
+        Some(generate_lazer_info(
+            replay.score_id,
+            mode, mods, clock_rate,
+            n300, n100, n50, ngeki, nkatu, nmiss,
+        ))
+    } else {
+        None
+    };
 
     let osr = build_osr_replay(
         &raw_replay,
@@ -91,6 +102,7 @@ pub async fn get_replay(
         replay.score_id,
         &map_md5,
         &username,
+        lazer_info.as_deref(),
     );
 
     let filename = format!(

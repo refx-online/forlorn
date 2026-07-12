@@ -35,3 +35,4 @@ bcrypt = "0.15"
 
 webhook = { path = "../webhook" }
 storage = { path = "../storage" }
+lzma-rs = "0.3.0"
