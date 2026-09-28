@@ -113,15 +113,24 @@ pub async fn get_replay(
         lazer_info.as_deref(),
     );
 
+    // NOTE: these come from the db and end up inside a quoted header value,
+    // so strip quotes, backslashes and control chars (response splitting /
+    // malformed header via crafted username or map metadata).
+    fn sanitize_filename_component(s: &str) -> String {
+        s.chars()
+            .filter(|c| !c.is_control() && *c != '"' && *c != '\\')
+            .collect()
+    }
+
     let filename = format!(
         "{username} - {artist} - {title} [{version}].osr",
-        username = username,
-        artist = artist,
-        title = title,
-        version = version,
+        username = sanitize_filename_component(&username),
+        artist = sanitize_filename_component(&artist),
+        title = sanitize_filename_component(&title),
+        version = sanitize_filename_component(&version),
     );
 
-    Response::builder()
+    match Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/octet-stream")
         .header(CONTENT_DESCRIPTION, "File Transfer")
@@ -130,6 +139,12 @@ pub async fn get_replay(
             format!("attachment; filename=\"{}\"", filename),
         )
         .body(Body::from(osr))
-        .unwrap()
-        .into_response()
+    {
+        Ok(res) => res.into_response(),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to build replay response",
+        )
+            .into_response(),
+    }
 }

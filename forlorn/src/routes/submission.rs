@@ -355,7 +355,7 @@ pub async fn submit_score(
             return (StatusCode::OK, b"error: no").into_response();
         }
 
-        (score.pp, score.stars, score.hypothetical_pp) = calculate_performance(
+        (score.pp, score.stars, score.hypothetical_pp) = match calculate_performance(
             &state.config.omajinai,
             beatmap.id,
             score.mode,
@@ -371,7 +371,22 @@ pub async fn submit_score(
             Some(score.ngeki),
             Some(score.nkatu),
         )
-        .await;
+        .await
+        {
+            Ok(values) => values,
+            Err(e) => {
+                tracing::warn!(
+                    "omajinai unavailable for {} ({}), asking client to retry: {e:?}",
+                    score.online_checksum,
+                    user.name,
+                );
+                let _ = state.metrics.incr("score.pp_error", ["status:error"]);
+
+                // empty response so we can tell them to retry instead of
+                // persisting a bogus 0pp score
+                return (StatusCode::OK).into_response();
+            },
+        };
 
         if score.pp.round() == 2112.0 || score.pp.round() == 727.0 {
             // And this is the part
