@@ -169,7 +169,7 @@ pub async fn calculate_performance(
     n50: Option<i32>,
     ngeki: Option<i32>,
     nkatu: Option<i32>,
-) -> (f32, f32, f32) {
+) -> Result<(f32, f32, f32)> {
     let request = PerformanceRequest {
         beatmap_id,
         mode,
@@ -186,10 +186,11 @@ pub async fn calculate_performance(
         nkatu,
     };
 
-    match calculate_pp(config, &request).await {
-        Ok(result) => (result.pp, result.stars, result.hypothetical_pp),
-        Err(_) => (0.0, 0.0, 0.0), // TODO: raise for error instead setting to 0? but it will broke submission..
-    }
+    // NOTE: propagate the error instead of defaulting to zeros — persisting
+    // a 0pp score on a transient omajinai outage demotes real plays and
+    // needs manual recalculation. callers fail the request so it retries.
+    let result = calculate_pp(config, &request).await?;
+    Ok((result.pp, result.stars, result.hypothetical_pp))
 }
 
 /// This xp calculation that was supposed to
@@ -252,8 +253,10 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
 
     let mut xp = 0.0;
 
+    // NOTE: float division — the old integer division truncated every
+    // sub-max score to 0 and zeroed these xp terms.
     let score_normalized =
-        (score.score / i32::MAX).min(1) as f32;
+        (score.score as f32 / i32::MAX as f32).min(1.0);
 
     xp += score_weight 
         * (1.0 - (-22.5 * score_normalized).exp());
@@ -264,7 +267,7 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
     xp += pp_normalized * pp_weight;
 
     let max_combo_normalized =
-        (score.max_combo / beatmap.max_combo).min(1) as f32;
+        (score.max_combo as f32 / beatmap.max_combo as f32).min(1.0);
 
     xp += max_combo_normalized * combo_weight;
 
@@ -305,7 +308,7 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
                 80
             };
             let aim_correction_value_normalized =
-                (score.aim_correction_value / aim_correction_limit).min(1) as f32;
+                (score.aim_correction_value as f32 / aim_correction_limit as f32).min(1.0);
 
             xp += aim_correction_value_normalized * aim_weight;
         }

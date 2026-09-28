@@ -69,7 +69,7 @@ pub async fn get_calculate_map(
         let mut stars = 0.0;
 
         for accuracy in COMMON_ACCURACY {
-            let (pp, star, _) = calculate_performance(
+            let Ok((pp, star, _)) = calculate_performance(
                 &state.config.omajinai,
                 beatmap.id,
                 mode,
@@ -85,7 +85,10 @@ pub async fn get_calculate_map(
                 None,
                 None,
             )
-            .await;
+            .await
+            else {
+                continue;
+            };
 
             if pp.is_nan() || pp.is_infinite() {
                 continue;
@@ -105,7 +108,7 @@ pub async fn get_calculate_map(
         );
     }
 
-    let (pp, stars, hypothetical_pp) = calculate_performance(
+    let (pp, stars, hypothetical_pp) = match calculate_performance(
         &state.config.omajinai,
         beatmap.id,
         mode,
@@ -121,7 +124,19 @@ pub async fn get_calculate_map(
         None,
         None,
     )
-    .await;
+    .await
+    {
+        Ok(values) => values,
+        Err(_) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!(
+                {
+                    "reason": "pp calculation failed!",
+                })),
+            );
+        },
+    };
 
     if pp.is_nan() || pp.is_infinite() || stars.is_nan() || stars.is_infinite() {
         return (
