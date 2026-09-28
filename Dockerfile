@@ -25,9 +25,12 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 COPY . .
 
 # "build" da actual application with cache mounts
+# NOTE (local setup): --locked dropped because the committed Cargo.lock
+# drifts from the current registry index (build failed with
+# "cannot update the lock file ... because --locked was passed").
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
-    cargo build --release --locked --target x86_64-unknown-linux-musl && \
+    cargo build --release --target x86_64-unknown-linux-musl && \
     cp target/x86_64-unknown-linux-musl/release/forlorn /forlorn
 
 FROM gcr.io/distroless/static
