@@ -16,6 +16,7 @@ pub struct Config {
     pub r2: CloudflareR2Config,
     pub omajinai: OmajinaiConfig,
     pub webhook: DiscordWebhookConfig,
+    pub discord_interactions: DiscordInteractionConfig,
     pub osu: OsuConfig,
 }
 
@@ -66,6 +67,12 @@ pub struct DiscordWebhookConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscordInteractionConfig {
+    pub public_key: String,
+    pub staff_role_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OsuConfig {
     pub api_key: String,
     // TODO: use v2?
@@ -87,6 +94,7 @@ impl Default for Config {
             r2: CloudflareR2Config::default(),
             omajinai: OmajinaiConfig::default(),
             webhook: DiscordWebhookConfig::default(),
+            discord_interactions: DiscordInteractionConfig::default(),
             osu: OsuConfig::default(),
         }
     }
@@ -152,6 +160,15 @@ impl Default for DiscordWebhookConfig {
         Self {
             score: "https://discord.com/api/webhooks/123".into(),
             debug: "https://discord.com/api/webhooks/123".into(),
+        }
+    }
+}
+
+impl Default for DiscordInteractionConfig {
+    fn default() -> Self {
+        Self {
+            public_key: String::new(),
+            staff_role_ids: Vec::new(),
         }
     }
 }
@@ -251,6 +268,16 @@ impl Config {
         }
         if let Ok(discord_debug_webhook) = std::env::var("DISCORD_DEBUG_WEBHOOK") {
             config.webhook.debug = discord_debug_webhook;
+        }
+        if let Ok(public_key) = std::env::var("DISCORD_PUBLIC_KEY") {
+            config.discord_interactions.public_key = public_key;
+        }
+        if let Ok(role_ids) = std::env::var("DISCORD_STAFF_ROLE_IDS") {
+            config.discord_interactions.staff_role_ids = role_ids
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
         }
 
         if let Ok(osu_api_key) = std::env::var("OSU_API_KEY") {

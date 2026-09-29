@@ -21,6 +21,8 @@ rslock = { version = "~0.7.2", features = ["tokio-comp"] }
 dogstatsd = "0.12.1"
 
 base64 = "0.22.1"
+ed25519-dalek = "2"
+hex = "0.4"
 simple-rijndael = { git = "https://github.com/Pure-Peace/simple-rijndael", rev = "901d7ef30f51867cbd26903c4170ee1425accb36" }
 md-5 = "0.10.6"
 

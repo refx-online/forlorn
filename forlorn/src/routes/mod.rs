@@ -2,6 +2,7 @@ pub mod beatmap;
 pub mod channel;
 pub mod connection;
 pub mod direct;
+pub mod discord;
 pub mod error;
 pub mod essentials;
 pub mod favourite;
@@ -110,4 +111,9 @@ pub fn create_routes() -> Router<AppState> {
         .route("/beatmaps/{map_id}", get(essentials::get_redirect_beatmap))
         .route("/u/{user_id}", get(essentials::get_redirect_profile))
         .route("/users/{user_id}", get(essentials::get_redirect_profile))
+        // discord interactions (staff slash commands, verified by signature)
+        .route(
+            "/discord/interactions",
+            post(discord::interactions),
+        )
 }
