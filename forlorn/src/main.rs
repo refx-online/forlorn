@@ -1,3 +1,6 @@
+// NOTE: see lib.rs — same deal, axum Response is big by nature.
+#![allow(clippy::result_large_err)]
+
 mod config;
 mod constants;
 mod dto;
