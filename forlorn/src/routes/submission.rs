@@ -624,10 +624,9 @@ pub async fn submit_score(
             let snapshot = stats.clone();
             let country = user.country.clone();
             tokio::spawn(async move {
-                let country_rank =
-                    repository::stats::get_country_rank(&redis, &snapshot, &country)
-                        .await
-                        .unwrap_or(0);
+                let country_rank = repository::stats::get_country_rank(&redis, &snapshot, &country)
+                    .await
+                    .unwrap_or(0);
                 if let Err(e) = repository::history::capture(
                     &db,
                     snapshot.id,

@@ -112,8 +112,5 @@ pub fn create_routes() -> Router<AppState> {
         .route("/u/{user_id}", get(essentials::get_redirect_profile))
         .route("/users/{user_id}", get(essentials::get_redirect_profile))
         // discord interactions (staff slash commands, verified by signature)
-        .route(
-            "/discord/interactions",
-            post(discord::interactions),
-        )
+        .route("/discord/interactions", post(discord::interactions))
 }

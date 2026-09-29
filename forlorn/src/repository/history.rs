@@ -27,8 +27,7 @@ pub async fn capture(
     .fetch_one(db.as_ref())
     .await?;
 
-    let worth_it =
-        fresh == 0 || pp as i64 > max_pp || (rank > 0 && (rank as i64) < min_rank);
+    let worth_it = fresh == 0 || pp as i64 > max_pp || (rank > 0 && (rank as i64) < min_rank);
     if !worth_it {
         return Ok(());
     }

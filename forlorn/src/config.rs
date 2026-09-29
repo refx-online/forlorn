@@ -66,7 +66,7 @@ pub struct DiscordWebhookConfig {
     pub debug: String, // dev server channel
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DiscordInteractionConfig {
     pub public_key: String,
     pub staff_role_ids: Vec<String>,
@@ -160,15 +160,6 @@ impl Default for DiscordWebhookConfig {
         Self {
             score: "https://discord.com/api/webhooks/123".into(),
             debug: "https://discord.com/api/webhooks/123".into(),
-        }
-    }
-}
-
-impl Default for DiscordInteractionConfig {
-    fn default() -> Self {
-        Self {
-            public_key: String::new(),
-            staff_role_ids: Vec::new(),
         }
     }
 }

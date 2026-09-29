@@ -1,18 +1,14 @@
 use axum::{
+    Json,
     body::Bytes,
     extract::State,
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
-    Json,
 };
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use crate::{
-    constants::RankedStatus,
-    infrastructure::redis::publish,
-    state::AppState,
-};
+use crate::{constants::RankedStatus, infrastructure::redis::publish, state::AppState};
 
 // discord interactions endpoint for staff commands (currently just /rank).
 // setup is dashboard-side: point discord's interactions url at
@@ -25,8 +21,7 @@ pub async fn interactions(
 ) -> impl IntoResponse {
     let cfg = &state.config.discord_interactions;
     if cfg.public_key.is_empty() || cfg.staff_role_ids.is_empty() {
-        return (StatusCode::SERVICE_UNAVAILABLE, "discord commands disabled")
-            .into_response();
+        return (StatusCode::SERVICE_UNAVAILABLE, "discord commands disabled").into_response();
     }
 
     let Some(sig) = headers
@@ -77,9 +72,7 @@ fn verify(public_key_hex: &str, sig_hex: &str, timestamp: &str, body: &[u8]) -> 
     message.extend_from_slice(body);
 
     VerifyingKey::from_bytes(&pk_arr)
-        .and_then(|key| {
-            Signature::from_slice(&sig_arr).map(|sig| (key, sig))
-        })
+        .and_then(|key| Signature::from_slice(&sig_arr).map(|sig| (key, sig)))
         .and_then(|(key, sig)| key.verify(&message, &sig))
         .is_ok()
 }
@@ -128,10 +121,14 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
         .and_then(Value::as_array)
         .map(|arr| arr.iter().filter_map(Value::as_str).collect())
         .unwrap_or_default();
-    if !roles
-        .iter()
-        .any(|r| state.config.discord_interactions.staff_role_ids.iter().any(|s| s == r))
-    {
+    if !roles.iter().any(|r| {
+        state
+            .config
+            .discord_interactions
+            .staff_role_ids
+            .iter()
+            .any(|s| s == r)
+    }) {
         return ephemeral("no permission".into());
     }
 
@@ -177,13 +174,11 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
 
     let maps: Vec<_> = rows
         .into_iter()
-        .filter(|(id, set_id, ..)| {
-            if scope == "map" {
-                *id == target
-            } else {
-                *set_id == target
-            }
-        })
+        .filter(
+            |(id, set_id, ..)| {
+                if scope == "map" { *id == target } else { *set_id == target }
+            },
+        )
         .collect();
 
     if maps.is_empty() {
@@ -205,12 +200,11 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
             format!("{artist} - {title} [{version}]")
         },
         _ => {
-            if let Err(e) =
-                sqlx::query("UPDATE maps SET status = ?, frozen = 1 WHERE set_id = ?")
-                    .bind(status.as_i32())
-                    .bind(target)
-                    .execute(state.db.as_ref())
-                    .await
+            if let Err(e) = sqlx::query("UPDATE maps SET status = ?, frozen = 1 WHERE set_id = ?")
+                .bind(status.as_i32())
+                .bind(target)
+                .execute(state.db.as_ref())
+                .await
             {
                 tracing::warn!("discord rank: update failed: {e:?}");
                 return ephemeral("database error".into());
