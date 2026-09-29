@@ -3,6 +3,7 @@ pub mod beatmap;
 pub mod clan;
 pub mod error;
 pub mod favourite;
+pub mod history;
 pub mod leaderboard;
 pub mod rating;
 pub mod score;
