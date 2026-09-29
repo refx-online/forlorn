@@ -1,5 +1,10 @@
+/// md5 of the current 041095 client build (osu!.exe). update this every
+/// time the client build changes or all submissions get rejected.
+/// NOTE: obfuscated vs unobfuscated builds hash differently — this must
+/// match whatever the updater actually ships.
 /// md5
-pub const REFX_CURRENT_CLIENT_HASH: &str = "30a2624d8f0d4d8120f33eb0d454f54b";
+pub const REFX_CURRENT_CLIENT_HASH: &str = "a07bf561293d1967f699d826e59f6701";
 
+/// md5 of refx!auth.dll built from refx-online/refx-auth. update on rebuild.
 /// md5
-pub const REFX_AUTH_HASH: &str = "69906d8897a67a88beaf51020daac499";
+pub const REFX_AUTH_HASH: &str = "9641d50fcde08ce8f16b841c18795fec";
