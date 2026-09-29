@@ -616,6 +616,33 @@ pub async fn submit_score(
             return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
         }
 
+        // snapshot pp/rank history for graphs + peak rank (fire and forget —
+        // submission latency shouldn't depend on it)
+        {
+            let db = state.db.clone();
+            let redis = state.redis.clone();
+            let snapshot = stats.clone();
+            let country = user.country.clone();
+            tokio::spawn(async move {
+                let country_rank =
+                    repository::stats::get_country_rank(&redis, &snapshot, &country)
+                        .await
+                        .unwrap_or(0);
+                if let Err(e) = repository::history::capture(
+                    &db,
+                    snapshot.id,
+                    snapshot.mode as i32,
+                    snapshot.pp as i32,
+                    snapshot.rank,
+                    country_rank,
+                )
+                .await
+                {
+                    tracing::warn!("history capture failed: {e:?}");
+                }
+            });
+        }
+
         if !user.restricted() {
             let r = state.redis.clone();
             tokio::spawn(async move {

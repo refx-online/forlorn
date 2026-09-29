@@ -73,6 +73,21 @@ pub async fn get_global_rank(redis: &RedisConnectionManager, stats: &Stats) -> R
     Ok(rank.map(|r| r + 1).unwrap_or(0))
 }
 
+pub async fn get_country_rank(
+    redis: &RedisConnectionManager,
+    stats: &Stats,
+    country: &str,
+) -> Result<i32> {
+    let leaderboard = format!("bancho:leaderboard:{}:{}", stats.mode, country);
+    let mut conn = redis.lock().await;
+
+    let rank: Option<i32> = conn
+        .zrevrank::<_, _, Option<i32>>(&leaderboard, &stats.id.to_string())
+        .await?;
+
+    Ok(rank.map(|r| r + 1).unwrap_or(0))
+}
+
 pub async fn update_rank(
     redis: &RedisConnectionManager,
     stats: &Stats,
