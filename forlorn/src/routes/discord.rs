@@ -77,12 +77,12 @@ fn verify(public_key_hex: &str, sig_hex: &str, timestamp: &str, body: &[u8]) -> 
         .is_ok()
 }
 
-fn ephemeral(content: String) -> (StatusCode, Json<Value>) {
+fn respond(content: String) -> (StatusCode, Json<Value>) {
     (
         StatusCode::OK,
         Json(json!({
             "type": 4,
-            "data": {"content": content, "flags": 64},
+            "data": {"content": content},
         })),
     )
 }
@@ -111,7 +111,7 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
         .and_then(Value::as_str)
         != Some("rank")
     {
-        return ephemeral("unknown command".into());
+        return respond("unknown command".into());
     }
 
     // staff gate: caller needs one of the configured role ids
@@ -129,7 +129,7 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
             .iter()
             .any(|s| s == r)
     }) {
-        return ephemeral("no permission".into());
+        return respond("no permission".into());
     }
 
     let options: Vec<Value> = value
@@ -144,15 +144,15 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
         Some("unrank") => RankedStatus::Pending,
         Some("love") => RankedStatus::Loved,
         Some("qual") => RankedStatus::Qualified,
-        _ => return ephemeral("status must be rank/unrank/love/qual".into()),
+        _ => return respond("status must be rank/unrank/love/qual".into()),
     };
     let scope = match opt_str(&options, "scope") {
         Some("map") | None => "map",
         Some("set") => "set",
-        _ => return ephemeral("scope must be map/set".into()),
+        _ => return respond("scope must be map/set".into()),
     };
     let Some(target) = opt_int(&options, "target") else {
-        return ephemeral("target must be a map (or set) id".into());
+        return respond("target must be a map (or set) id".into());
     };
 
     // same semantics as the ingame ?map command: flip status+frozen, then
@@ -168,7 +168,7 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
         Ok(rows) => rows,
         Err(e) => {
             tracing::warn!("discord rank: db lookup failed: {e:?}");
-            return ephemeral("database error".into());
+            return respond("database error".into());
         },
     };
 
@@ -182,7 +182,7 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
         .collect();
 
     if maps.is_empty() {
-        return ephemeral("couldn't find that map in the database.".into());
+        return respond("couldn't find that map in the database.".into());
     }
 
     let label = match scope {
@@ -195,7 +195,7 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
                 .await
             {
                 tracing::warn!("discord rank: update failed: {e:?}");
-                return ephemeral("database error".into());
+                return respond("database error".into());
             }
             format!("{artist} - {title} [{version}]")
         },
@@ -207,7 +207,7 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
                 .await
             {
                 tracing::warn!("discord rank: update failed: {e:?}");
-                return ephemeral("database error".into());
+                return respond("database error".into());
             }
             format!("set {target} ({} maps)", maps.len())
         },
@@ -226,5 +226,5 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
         RankedStatus::Qualified => "qualified",
         _ => "updated",
     };
-    ephemeral(format!("{label} has been {status_name}."))
+    respond(format!("{label} has been {status_name}."))
 }
