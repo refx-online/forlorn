@@ -111,6 +111,10 @@ pub fn create_routes() -> Router<AppState> {
         .route("/beatmaps/{map_id}", get(essentials::get_redirect_beatmap))
         .route("/u/{user_id}", get(essentials::get_redirect_profile))
         .route("/users/{user_id}", get(essentials::get_redirect_profile))
-        // discord interactions (staff slash commands, verified by signature)
+        // discord interactions (staff slash commands, verified by signature).
+        // served on both paths: setups that route forlorn by subdomain use
+        // /discord/interactions, setups that route it by ^/web path prefix
+        // (e.g. a single cloudflare path rule) use the /web/ one.
         .route("/discord/interactions", post(discord::interactions))
+        .route("/web/discord-interactions", post(discord::interactions))
 }
