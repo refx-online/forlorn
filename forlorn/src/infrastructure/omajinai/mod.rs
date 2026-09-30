@@ -67,28 +67,24 @@ pub async fn calculate_pp(
 
     let mut performance_request = requests.clone();
     let mut mods = Mods::from_bits_truncate(performance_request.mods);
+    let game_mode = GameMode::from_params(performance_request.mode, mods);
 
     // lowkey this look stupid
-    if (performance_request.mode == GameMode::CHEAT_OSU.as_i32()
-        || performance_request.mode == GameMode::CHEAT_CHEAT_OSU.as_i32())
-        && mods.contains(Mods::RELAX)
-    {
+    if game_mode.cheat() && mods.contains(Mods::RELAX) {
         // NOTE: on the client, it has 2 relaxes. relax mod and relax "cheat".
         //       we should not calculate relax mods on that client because its nerf was deemed "too harsh"
         //       and because its a cheating stuff, and we know how the people that plays it reeaallly wants
         mods.remove(Mods::RELAX);
     }
 
-    if performance_request.mode == GameMode::CHEAT_OSU.as_i32()
-        || performance_request.mode == GameMode::CHEAT_CHEAT_OSU.as_i32()
-    {
+    if game_mode.cheat() {
         // since streams are too stupid, we'll use "relax" nerfs to combat that
         mods.insert(Mods::RELAX);
     }
 
     performance_request.mods = mods.bits();
     // mode as vanilla
-    performance_request.mode %= 4;
+    performance_request.mode = game_mode.as_vanilla();
 
     let resp = CLIENT.get(&url).query(&performance_request).send().await?;
 

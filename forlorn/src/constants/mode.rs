@@ -16,29 +16,71 @@ pub enum GameMode {
     AP_OSU = 8,
 
     CHEAT_OSU = 12,
-    CHEAT_CHEAT_OSU = 16,
-    TOUCH_DEVICE_OSU = 20,
+    CHEAT_TAIKO = 13,
+    CHEAT_CATCH = 14,
+    CHEAT_MANIA = 15,
+
+    CHEAT_RX_OSU = 21,
+    CHEAT_RX_TAIKO = 22,
+    CHEAT_RX_CATCH = 23,
+
+    CHEAT_AP_OSU = 24,
 }
 
 impl GameMode {
     pub fn from_params(mode: i32, mods: Mods) -> GameMode {
+        // explicit new-protocol bytes win outright
+        match mode {
+            21 => return GameMode::CHEAT_RX_OSU,
+            22 => return GameMode::CHEAT_RX_TAIKO,
+            23 => return GameMode::CHEAT_RX_CATCH,
+            24 => return GameMode::CHEAT_AP_OSU,
+            _ => {}
+        }
+
+        // legacy cheatcheat byte folds into the cheat group
+        let mode = if mode == 16 { 12 } else { mode };
+
+        // cheat group 12-15: game mode from the byte, variant from mods
+        if (12..=15).contains(&mode) {
+            let base = mode - 12;
+            if mods.contains(Mods::AUTOPILOT) && base == 0 {
+                return GameMode::CHEAT_AP_OSU;
+            }
+            if mods.contains(Mods::RELAX) && base != 3 {
+                return match base {
+                    0 => GameMode::CHEAT_RX_OSU,
+                    1 => GameMode::CHEAT_RX_TAIKO,
+                    2 => GameMode::CHEAT_RX_CATCH,
+                    _ => GameMode::CHEAT_OSU,
+                };
+            }
+            return match base {
+                0 => GameMode::CHEAT_OSU,
+                1 => GameMode::CHEAT_TAIKO,
+                2 => GameMode::CHEAT_CATCH,
+                3 => GameMode::CHEAT_MANIA,
+                _ => GameMode::CHEAT_OSU,
+            };
+        }
+
+        // touch folds into vanilla std (the TD mod bit stays on the score).
         // i dont even know
+        if mode == 20 {
+            return GameMode::VN_OSU;
+        }
+
         if mode >= 4 {
             return match mode {
                 4 => GameMode::RX_OSU,
                 5 => GameMode::RX_TAIKO,
                 6 => GameMode::RX_CATCH,
                 8 => GameMode::AP_OSU,
-                12 => GameMode::CHEAT_OSU,
-                16 => GameMode::CHEAT_CHEAT_OSU,
-                20 => GameMode::TOUCH_DEVICE_OSU,
                 _ => GameMode::VN_OSU,
             };
         }
 
-        if mods.contains(Mods::TOUCHSCREEN) && mode == 0 {
-            return GameMode::TOUCH_DEVICE_OSU;
-        } else if mods.contains(Mods::AUTOPILOT) && mode == 0 {
+        if mods.contains(Mods::AUTOPILOT) && mode == 0 {
             return GameMode::AP_OSU;
         } else if mods.contains(Mods::RELAX) && mode != 3 {
             return match mode {
@@ -58,19 +100,84 @@ impl GameMode {
         }
     }
 
+    /// Cheat classification for score submission, where the raw 12/16 byte
+    /// carries no game mode — take it from the played map instead.
+    /// Explicit bytes (13-15, 21-24) already carry it and pass through.
+    pub fn from_cheat_submission(raw: i32, beatmap_mode: i32, mods: Mods) -> GameMode {
+        if matches!(raw, 13 | 14 | 15 | 21 | 22 | 23 | 24) {
+            return GameMode::from_params(raw, mods);
+        }
+
+        let base = beatmap_mode.clamp(0, 3);
+        if mods.contains(Mods::AUTOPILOT) && base == 0 {
+            return GameMode::CHEAT_AP_OSU;
+        }
+        if mods.contains(Mods::RELAX) && base != 3 {
+            return match base {
+                0 => GameMode::CHEAT_RX_OSU,
+                1 => GameMode::CHEAT_RX_TAIKO,
+                2 => GameMode::CHEAT_RX_CATCH,
+                _ => GameMode::CHEAT_OSU,
+            };
+        }
+        match base {
+            1 => GameMode::CHEAT_TAIKO,
+            2 => GameMode::CHEAT_CATCH,
+            3 => GameMode::CHEAT_MANIA,
+            _ => GameMode::CHEAT_OSU,
+        }
+    }
+
     pub fn cheat(self) -> bool {
-        matches!(self, GameMode::CHEAT_OSU | GameMode::CHEAT_CHEAT_OSU)
+        matches!(
+            self,
+            GameMode::CHEAT_OSU
+                | GameMode::CHEAT_TAIKO
+                | GameMode::CHEAT_CATCH
+                | GameMode::CHEAT_MANIA
+                | GameMode::CHEAT_RX_OSU
+                | GameMode::CHEAT_RX_TAIKO
+                | GameMode::CHEAT_RX_CATCH
+                | GameMode::CHEAT_AP_OSU
+        )
+    }
+
+    /// Lenient validation tier (old cheatcheat rules). Strict tier is the
+    /// plain cheat non-rx group.
+    pub fn cheat_lenient(self) -> bool {
+        matches!(
+            self,
+            GameMode::CHEAT_RX_OSU
+                | GameMode::CHEAT_RX_TAIKO
+                | GameMode::CHEAT_RX_CATCH
+                | GameMode::CHEAT_AP_OSU
+        )
     }
 
     pub fn ngeki_nkatu(self) -> bool {
         matches!(
             self,
-            GameMode::VN_TAIKO | GameMode::RX_TAIKO | GameMode::VN_MANIA
+            GameMode::VN_TAIKO
+                | GameMode::RX_TAIKO
+                | GameMode::VN_MANIA
+                | GameMode::CHEAT_TAIKO
+                | GameMode::CHEAT_RX_TAIKO
+                | GameMode::CHEAT_MANIA
         )
     }
 
+    /// NOTE: explicit match, never `% 4` — cheat-rx ids (21+) would land on
+    /// the wrong game (21 % 4 == 1 == taiko).
     pub fn as_vanilla(self) -> i32 {
-        self as i32 % 4
+        match self {
+            GameMode::VN_OSU | GameMode::RX_OSU | GameMode::AP_OSU | GameMode::CHEAT_OSU => 0,
+            GameMode::VN_TAIKO | GameMode::RX_TAIKO | GameMode::CHEAT_TAIKO => 1,
+            GameMode::VN_CATCH | GameMode::RX_CATCH | GameMode::CHEAT_CATCH => 2,
+            GameMode::VN_MANIA | GameMode::CHEAT_MANIA => 3,
+            GameMode::CHEAT_RX_OSU | GameMode::CHEAT_AP_OSU => 0,
+            GameMode::CHEAT_RX_TAIKO => 1,
+            GameMode::CHEAT_RX_CATCH => 2,
+        }
     }
 
     pub fn as_i32(self) -> i32 {
@@ -91,9 +198,15 @@ impl GameMode {
             GameMode::AP_OSU => "ap!std",
 
             GameMode::CHEAT_OSU => "cheat!std",
-            GameMode::CHEAT_CHEAT_OSU => "cheatcheat!std",
+            GameMode::CHEAT_TAIKO => "cheat!taiko",
+            GameMode::CHEAT_CATCH => "cheat!catch",
+            GameMode::CHEAT_MANIA => "cheat!mania",
 
-            GameMode::TOUCH_DEVICE_OSU => "td!std",
+            GameMode::CHEAT_RX_OSU => "cheat-rx!std",
+            GameMode::CHEAT_RX_TAIKO => "cheat-rx!taiko",
+            GameMode::CHEAT_RX_CATCH => "cheat-rx!catch",
+
+            GameMode::CHEAT_AP_OSU => "cheat-ap!std",
         }
     }
 
