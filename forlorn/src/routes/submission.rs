@@ -12,7 +12,9 @@ use axum::{
 use webhook::Webhook;
 
 use crate::{
-    constants::{Grade, REFX_AUTH_HASH, REFX_CURRENT_CLIENT_HASH, RankedStatus, SubmissionStatus},
+    constants::{
+        GameMode, Grade, REFX_AUTH_HASH, REFX_CURRENT_CLIENT_HASH, RankedStatus, SubmissionStatus,
+    },
     dto::submission::{ScoreHeader, ScoreSubmission},
     infrastructure::{
         beatmap_service,
@@ -237,7 +239,13 @@ pub async fn submit_score(
         },
     };
 
-    score.mode = score.mode().as_i32();
+    // cheat bytes (12/16) carry no game mode — resolve it from the map.
+    // explicit new bytes (13-15, 21-24) already carry it.
+    score.mode = if matches!(score.mode, 12 | 13 | 14 | 15 | 16 | 21 | 22 | 23 | 24) {
+        GameMode::from_cheat_submission(score.mode, beatmap.mode as i32, score.mods()).as_i32()
+    } else {
+        score.mode().as_i32()
+    };
     score.acc = calculate_accuracy(&score);
     score.quit = submission.exited_out();
     consume_cheat_values(&mut score, &submission);

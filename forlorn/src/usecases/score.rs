@@ -302,11 +302,13 @@ pub fn calculate_xp(score: &Score, beatmap: &Beatmap) -> f32 {
         }
 
         if score.aim_correction_value > -1 {
-            let aim_correction_limit = if score.mode() == GameMode::CHEAT_OSU {
-                60
-            } else {
-                80
-            };
+            // strict tier caps lower, lenient tier higher
+            let aim_correction_limit =
+                if score.mode().cheat() && !score.mode().cheat_lenient() {
+                    60
+                } else {
+                    80
+                };
             let aim_correction_value_normalized =
                 (score.aim_correction_value as f32 / aim_correction_limit as f32).min(1.0);
 
@@ -412,50 +414,42 @@ pub fn consume_cheat_values(score: &mut Score, fields: &ScoreSubmission) {
 }
 
 pub fn validate_cheat_values(score: &Score) -> bool {
-    match score.mode() {
-        GameMode::CHEAT_OSU => {
-            if (score.uses_aim_correction || score.aim_assist_type() == AimAssistType::Correction)
-                && score.aim_correction_value > 60
-            {
-                return false;
-            }
-            if score.uses_timewarp || score.timewarp_value != -1.0 {
-                return false;
-            }
-            if score.uses_cs_changer {
-                return false;
-            }
-            if let Some(maple) = &score.maple_values
-                && let Some(power) = maple.0.v3powerval
-                && let Some(slider) = maple.0.v3sliderpowerval
-                && (power > 1.0 || slider > 1.0)
-            {
-                return false;
-            }
-
-            true
-        },
-        GameMode::CHEAT_CHEAT_OSU => {
-            if (score.uses_aim_correction || score.aim_assist_type() == AimAssistType::Correction)
-                && score.aim_correction_value > 80
-            {
-                return false;
-            }
-            if score.uses_timewarp && score.timewarp_value < 90.0 {
-                return false;
-            }
-            if let Some(maple) = &score.maple_values
-                && let Some(power) = maple.0.v3powerval
-                && let Some(slider) = maple.0.v3sliderpowerval
-                && (power > 1.0 || slider > 1.0)
-            {
-                return false;
-            }
-
-            true
-        },
-        _ => true,
+    let mode = score.mode();
+    if !mode.cheat() {
+        return true;
     }
+
+    // strict tier is plain cheat non-rx, lenient tier (old cheatcheat
+    // rules) is cheat-rx/autopilot.
+    let correction_limit = if mode.cheat_lenient() { 80 } else { 60 };
+    if (score.uses_aim_correction || score.aim_assist_type() == AimAssistType::Correction)
+        && score.aim_correction_value > correction_limit
+    {
+        return false;
+    }
+
+    if mode.cheat_lenient() {
+        if score.uses_timewarp && score.timewarp_value < 90.0 {
+            return false;
+        }
+    } else {
+        if score.uses_timewarp || score.timewarp_value != -1.0 {
+            return false;
+        }
+        if score.uses_cs_changer {
+            return false;
+        }
+    }
+
+    if let Some(maple) = &score.maple_values
+        && let Some(power) = maple.0.v3powerval
+        && let Some(slider) = maple.0.v3sliderpowerval
+        && (power > 1.0 || slider > 1.0)
+    {
+        return false;
+    }
+
+    true
 }
 
 pub fn first_place_webhook(
