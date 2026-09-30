@@ -8,6 +8,7 @@ pub mod essentials;
 pub mod favourite;
 pub mod lastfm;
 pub mod leaderboard;
+pub mod performance;
 pub mod rating;
 pub mod replay;
 pub mod screenshot;
@@ -62,6 +63,10 @@ pub fn create_routes() -> Router<AppState> {
             get(direct::get_direct_search_set),
         )
         .route("/web/osu-error.php", post(error::get_error))
+        .route(
+            "/web/osu-performance.php",
+            post(performance::submit_performance),
+        )
         // refx route
         // TODO: ask myself in the future to revert these ancient routes
         //       to its original route, so i dont have to
