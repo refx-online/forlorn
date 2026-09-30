@@ -138,3 +138,29 @@ pub async fn insert(db: &DbPoolManager, score: &Score, beatmap: &Beatmap) -> Res
 
     Ok(res.last_insert_id())
 }
+
+/// Staff review queue: records why a score looked suspicious at submit
+/// time (the score itself is still accepted). Seen in NERV flags.
+pub async fn flag_score(
+    db: &DbPoolManager,
+    user_id: i32,
+    score_id: u64,
+    kind: &str,
+    reason: &str,
+    det: &str,
+) -> Result<()> {
+    sqlx::query(
+        "INSERT INTO scores_flag (user_id, score_id, kind, reason, det, created_at)
+         VALUES (?, ?, ?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE reason = VALUES(reason), det = VALUES(det), created_at = NOW()",
+    )
+    .bind(user_id)
+    .bind(score_id)
+    .bind(kind)
+    .bind(reason)
+    .bind(det)
+    .execute(db.as_ref())
+    .await?;
+
+    Ok(())
+}

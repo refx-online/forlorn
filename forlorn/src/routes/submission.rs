@@ -258,10 +258,27 @@ pub async fn submit_score(
         });
     }
 
+    // collected here, written to scores_flag after the score row exists.
+    let mut flag: Option<(String, String, String)> = None;
+
     if submission.refx() && !validate_cheat_values(&score) {
         let _ = state
             .metrics
             .incr("score.invalid_cheat_values", ["status:ok"]);
+
+        let det = format!(
+            "ac={}|aa={:?}|tw={}|cs={}",
+            score.aim_correction_value,
+            score.maple_values,
+            score.timewarp_value,
+            score.uses_cs_changer
+        );
+        // recorded for the NERV flags queue below (score still accepted).
+        flag = Some((
+            "overcheat".to_string(),
+            format!("malformed cheat value [{}]", det),
+            det,
+        ));
 
         let webhook = Webhook::new(&state.config.webhook.debug).content(format!(
             "[{}] {} Overcheat? (malformed cheat value) [ac={}|aa={:?}|tw={}|cs={}]",
@@ -476,6 +493,20 @@ pub async fn submit_score(
                 return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
             },
         };
+
+        if let Some((kind, reason, det)) = flag {
+            let db = state.db.clone();
+            let user_id = user.id;
+            let score_id = score.id;
+            tokio::spawn(async move {
+                if let Err(e) =
+                    repository::score::flag_score(&db, user_id, score_id, &kind, &reason, &det)
+                        .await
+                {
+                    tracing::warn!("flag insert failed: {e:?}");
+                }
+            });
+        }
 
         if score.passed {
             if score.rank == 1
