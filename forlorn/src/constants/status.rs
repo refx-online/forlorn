@@ -70,3 +70,64 @@ impl RankedStatus {
         }
     }
 }
+
+/// Per-mode rank status packed into one u64: 3 bits per mode id (0-15).
+/// Statuses aren't contiguous (-2 is unused), so codes are mapped
+/// explicitly: -3->0, -1->1, 0->2, 1->3, 2->4, 3->5, 4->6, 5->7.
+pub const STATUS_BITS: u32 = 3;
+const STATUS_CODE_MASK: u64 = 0b111;
+
+/// All modes pending: every 3-bit group is 010.
+pub const STATUS_MASK_ALL_PENDING: u64 = 0x492492492492;
+
+fn status_code(status: i32) -> u64 {
+    match status {
+        -3 => 0,
+        -1 => 1,
+        0 => 2,
+        1 => 3,
+        2 => 4,
+        3 => 5,
+        4 => 6,
+        5 => 7,
+        _ => 2,
+    }
+}
+
+fn code_status(code: u64) -> i32 {
+    match code & STATUS_CODE_MASK {
+        0 => -3,
+        1 => -1,
+        2 => 0,
+        3 => 1,
+        4 => 2,
+        5 => 3,
+        6 => 4,
+        7 => 5,
+        _ => 0,
+    }
+}
+
+/// Read one mode's status out of a packed mask. Out-of-range modes read Pending.
+pub fn status_at(mask: u64, mode: i32) -> i32 {
+    if !(0..16).contains(&mode) {
+        return RankedStatus::Pending.as_i32();
+    }
+    code_status(mask >> (mode as u32 * STATUS_BITS))
+}
+
+/// Write one mode's status into a packed mask.
+pub fn with_status(mask: u64, mode: i32, status: i32) -> u64 {
+    if !(0..16).contains(&mode) {
+        return mask;
+    }
+    let code = status_code(status);
+    let shift = mode as u32 * STATUS_BITS;
+    (mask & !(STATUS_CODE_MASK << shift)) | (code << shift)
+}
+
+/// Same status for every mode (what the old global column meant).
+pub fn all_modes_status(status: i32) -> u64 {
+    let code = status_code(status);
+    (0..16).fold(0u64, |mask, mode| mask | (code << (mode * STATUS_BITS)))
+}

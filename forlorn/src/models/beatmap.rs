@@ -9,6 +9,7 @@ pub struct Beatmap {
     pub id: i32,
     pub set_id: i32,
     pub status: i32,
+    pub status_mask: u64,
     pub md5: String,
     pub artist: String,
     pub title: String,
@@ -142,5 +143,25 @@ impl Beatmap {
 
     pub fn awards_ranked_pp(&self) -> bool {
         [RankedStatus::Ranked.as_i32(), RankedStatus::Approved.as_i32()].contains(&self.status)
+    }
+
+    /// Per-mode rank status from the packed mask (see constants::status).
+    pub fn mode_status(&self, mode: i32) -> i32 {
+        crate::constants::status::status_at(self.status_mask, mode)
+    }
+
+    pub fn has_leaderboard_in(&self, mode: i32) -> bool {
+        [
+            RankedStatus::Qualified.as_i32(),
+            RankedStatus::Ranked.as_i32(),
+            RankedStatus::Approved.as_i32(),
+            RankedStatus::Loved.as_i32(),
+        ]
+        .contains(&self.mode_status(mode))
+    }
+
+    pub fn awards_ranked_pp_in(&self, mode: i32) -> bool {
+        [RankedStatus::Ranked.as_i32(), RankedStatus::Approved.as_i32()]
+            .contains(&self.mode_status(mode))
     }
 }

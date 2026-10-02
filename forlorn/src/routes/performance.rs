@@ -50,10 +50,10 @@ pub struct PerformanceReport {
 fn mod_mode(mode: i32) -> &'static str {
     match mode {
         4..=6 => "relax",
-        8 => "autopilot",
-        12..=15 => "cheat",
-        21..=23 => "cheat-rx",
-        24 => "cheat-ap",
+        7 => "autopilot",
+        8..=11 => "cheat",
+        12..=14 => "cheat-rx",
+        15 => "cheat-ap",
         _ => "vanilla",
     }
 }

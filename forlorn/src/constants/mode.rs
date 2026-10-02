@@ -13,56 +13,33 @@ pub enum GameMode {
     RX_TAIKO = 5,
     RX_CATCH = 6,
 
-    AP_OSU = 8,
+    AP_OSU = 7,
 
-    CHEAT_OSU = 12,
-    CHEAT_TAIKO = 13,
-    CHEAT_CATCH = 14,
-    CHEAT_MANIA = 15,
+    CHEAT_OSU = 8,
+    CHEAT_TAIKO = 9,
+    CHEAT_CATCH = 10,
+    CHEAT_MANIA = 11,
 
-    CHEAT_RX_OSU = 21,
-    CHEAT_RX_TAIKO = 22,
-    CHEAT_RX_CATCH = 23,
+    CHEAT_RX_OSU = 12,
+    CHEAT_RX_TAIKO = 13,
+    CHEAT_RX_CATCH = 14,
 
-    CHEAT_AP_OSU = 24,
+    CHEAT_AP_OSU = 15,
 }
 
 impl GameMode {
     pub fn from_params(mode: i32, mods: Mods) -> GameMode {
-        // explicit new-protocol bytes win outright
+        // explicit cheat-rx/ap bytes win outright
         match mode {
-            21 => return GameMode::CHEAT_RX_OSU,
-            22 => return GameMode::CHEAT_RX_TAIKO,
-            23 => return GameMode::CHEAT_RX_CATCH,
-            24 => return GameMode::CHEAT_AP_OSU,
+            12 => return GameMode::CHEAT_RX_OSU,
+            13 => return GameMode::CHEAT_RX_TAIKO,
+            14 => return GameMode::CHEAT_RX_CATCH,
+            15 => return GameMode::CHEAT_AP_OSU,
             _ => {}
         }
 
         // legacy cheatcheat byte folds into the cheat group
-        let mode = if mode == 16 { 12 } else { mode };
-
-        // cheat group 12-15: game mode from the byte, variant from mods
-        if (12..=15).contains(&mode) {
-            let base = mode - 12;
-            if mods.contains(Mods::AUTOPILOT) && base == 0 {
-                return GameMode::CHEAT_AP_OSU;
-            }
-            if mods.contains(Mods::RELAX) && base != 3 {
-                return match base {
-                    0 => GameMode::CHEAT_RX_OSU,
-                    1 => GameMode::CHEAT_RX_TAIKO,
-                    2 => GameMode::CHEAT_RX_CATCH,
-                    _ => GameMode::CHEAT_OSU,
-                };
-            }
-            return match base {
-                0 => GameMode::CHEAT_OSU,
-                1 => GameMode::CHEAT_TAIKO,
-                2 => GameMode::CHEAT_CATCH,
-                3 => GameMode::CHEAT_MANIA,
-                _ => GameMode::CHEAT_OSU,
-            };
-        }
+        let mode = if mode == 16 { 8 } else { mode };
 
         // touch folds into vanilla std (the TD mod bit stays on the score).
         // i dont even know
@@ -75,7 +52,11 @@ impl GameMode {
                 4 => GameMode::RX_OSU,
                 5 => GameMode::RX_TAIKO,
                 6 => GameMode::RX_CATCH,
-                8 => GameMode::AP_OSU,
+                7 => GameMode::AP_OSU,
+                8 => GameMode::CHEAT_OSU,
+                9 => GameMode::CHEAT_TAIKO,
+                10 => GameMode::CHEAT_CATCH,
+                11 => GameMode::CHEAT_MANIA,
                 _ => GameMode::VN_OSU,
             };
         }
@@ -102,9 +83,9 @@ impl GameMode {
 
     /// Cheat classification for score submission, where the raw 12/16 byte
     /// carries no game mode — take it from the played map instead.
-    /// Explicit bytes (13-15, 21-24) already carry it and pass through.
+    /// Explicit bytes (8-15) already carry it and pass through.
     pub fn from_cheat_submission(raw: i32, beatmap_mode: i32, mods: Mods) -> GameMode {
-        if matches!(raw, 13 | 14 | 15 | 21 | 22 | 23 | 24) {
+        if (8..=15).contains(&raw) {
             return GameMode::from_params(raw, mods);
         }
 
@@ -166,8 +147,8 @@ impl GameMode {
         )
     }
 
-    /// NOTE: explicit match, never `% 4` — cheat-rx ids (21+) would land on
-    /// the wrong game (21 % 4 == 1 == taiko).
+    /// NOTE: explicit match, never derive it — ap ids would land on
+    /// the wrong game (7 % 4 == 3 == mania, but ap is std-only).
     pub fn as_vanilla(self) -> i32 {
         match self {
             GameMode::VN_OSU | GameMode::RX_OSU | GameMode::AP_OSU | GameMode::CHEAT_OSU => 0,

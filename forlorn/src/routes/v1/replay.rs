@@ -76,7 +76,7 @@ pub async fn get_replay(
     let version: String = row.get("version");
     let clock_rate: f64 = row.get("clock_rate");
 
-    let lazer_info = if mode >= 12 {
+    let lazer_info = if mode >= 8 {
         Some(generate_lazer_info(
             replay.score_id,
             mode,

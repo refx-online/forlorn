@@ -49,7 +49,7 @@ pub fn generate_lazer_info(
 
     let mut mod_list = Vec::new();
 
-    if mode >= 12 {
+    if mode >= 8 {
         mod_list.push(ApiMod {
             acronym: "CL".into(),
             settings: HashMap::new(),

@@ -82,7 +82,7 @@ pub async fn md5_from_cache(md5: &str) -> Option<Beatmap> {
 
 pub async fn md5_from_database(db: &DbPoolManager, md5: &str) -> Result<Option<Beatmap>> {
     let beatmap = sqlx::query_as::<_, Beatmap>(
-        "select id, set_id, status, md5, artist, title, version, creator, filename, \
+        "select id, set_id, status, status_mask, md5, artist, title, version, creator, filename, \
             last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff \
          from maps where md5 = ?"
     )
@@ -102,7 +102,7 @@ pub async fn md5_from_database(db: &DbPoolManager, md5: &str) -> Result<Option<B
     }
 
     let set: Vec<Beatmap> = sqlx::query_as::<_, Beatmap>(
-        "select id, set_id, status, md5, artist, title, version, creator, filename, \
+        "select id, set_id, status, status_mask, md5, artist, title, version, creator, filename, \
             last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff \
          from maps where set_id = ?"
     )
@@ -215,7 +215,7 @@ async fn md5_from_api(config: &Config, db: &DbPoolManager, md5: &str) -> Result<
 
 pub async fn fetch_by_filename(db: &DbPoolManager, filename: &str) -> Result<Option<Beatmap>> {
     let beatmap = sqlx::query_as::<_, Beatmap>(
-        "select id, set_id, status, md5, artist, title, version, creator, filename, \
+        "select id, set_id, status, status_mask, md5, artist, title, version, creator, filename, \
             last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff \
          from maps where filename = ?"
     )
@@ -234,7 +234,7 @@ pub async fn fetch_many(
     page_size: i64,
 ) -> Result<Vec<Beatmap>> {
     let mut query = String::from(
-        "select id, set_id, status, md5, artist, title, version, creator, filename, \
+        "select id, set_id, status, status_mask, md5, artist, title, version, creator, filename, \
          last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff \
          from maps",
     );
@@ -342,7 +342,7 @@ pub async fn id_from_cache(id: &i32) -> Option<Beatmap> {
 
 pub async fn id_from_database(db: &DbPoolManager, map_id: &i32) -> Result<Option<Beatmap>> {
     let beatmap = sqlx::query_as::<_, Beatmap>(
-        "select id, set_id, status, md5, artist, title, version, creator, filename, \
+        "select id, set_id, status, status_mask, md5, artist, title, version, creator, filename, \
             last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff \
          from maps where id = ?"
     )
@@ -362,7 +362,7 @@ pub async fn id_from_database(db: &DbPoolManager, map_id: &i32) -> Result<Option
     }
 
     let set: Vec<Beatmap> = sqlx::query_as::<_, Beatmap>(
-        "select id, set_id, status, md5, artist, title, version, creator, filename, \
+        "select id, set_id, status, status_mask, md5, artist, title, version, creator, filename, \
             last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff \
          from maps where set_id = ?"
     )
@@ -449,14 +449,15 @@ async fn save(db: &DbPoolManager, beatmaps: &[Beatmap]) -> Result<()> {
 
     for beatmap in beatmaps {
         sqlx::query(
-            "replace into maps (server, id, set_id, status, md5, artist, title, version, creator, \
+            "replace into maps (server, id, set_id, status, status_mask, md5, artist, title, version, creator, \
              filename, last_update, total_length, max_combo, frozen, plays, passes, mode, bpm, cs, ar, od, hp, diff) \
-             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind("osu!") // TODO: private?
         .bind(beatmap.id)
         .bind(beatmap.set_id)
         .bind(beatmap.status)
+        .bind(beatmap.status_mask)
         .bind(&beatmap.md5)
         .bind(&beatmap.artist)
         .bind(&beatmap.title)

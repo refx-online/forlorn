@@ -155,10 +155,25 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
         return respond("target must be a map (or set) id".into());
     };
 
+    // optional per-mode rank: comma-separated mode ids (0-15).
+    // omitted = all modes, same as the old global-only behavior.
+    let modes: Vec<i32> = match opt_str(&options, "modes") {
+        Some(list) => list
+            .split(',')
+            .filter_map(|m| m.trim().parse::<i32>().ok())
+            .filter(|m| (0..16).contains(m))
+            .collect(),
+        None => (0..16).collect(),
+    };
+    if modes.is_empty() {
+        return respond("modes must be comma-separated ids 0-15".into());
+    }
+    let all_modes = modes.len() == 16;
+
     // same semantics as the ingame ?map command: flip status+frozen, then
     // tell the world to refresh the map(s).
-    let rows: Vec<(i32, i32, String, String, String, String, i32)> = match sqlx::query_as(
-        "SELECT id, set_id, md5, artist, title, version, status FROM maps WHERE id = ? OR set_id = ?",
+    let rows: Vec<(i32, i32, String, String, String, String, i32, u64)> = match sqlx::query_as(
+        "SELECT id, set_id, md5, artist, title, version, status, status_mask FROM maps WHERE id = ? OR set_id = ?",
     )
     .bind(target)
     .bind(target)
@@ -187,30 +202,56 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
 
     let label = match scope {
         "map" => {
-            let (id, _, _, artist, title, version, _) = &maps[0];
-            if let Err(e) = sqlx::query("UPDATE maps SET status = ?, frozen = 1 WHERE id = ?")
-                .bind(status.as_i32())
-                .bind(id)
-                .execute(state.db.as_ref())
-                .await
-            {
+            let (id, _, _, artist, title, version, _, mask) = &maps[0];
+            let mut new_mask = *mask;
+            for m in &modes {
+                new_mask = crate::constants::status::with_status(new_mask, *m, status.as_i32());
+            }
+            // global status only follows when every mode was set; a partial
+            // rank leaves it alone so old readers don't lie.
+            let query = if all_modes {
+                sqlx::query("UPDATE maps SET status = ?, status_mask = ?, frozen = 1 WHERE id = ?")
+                    .bind(status.as_i32())
+                    .bind(new_mask)
+                    .bind(id)
+            } else {
+                sqlx::query("UPDATE maps SET status_mask = ?, frozen = 1 WHERE id = ?")
+                    .bind(new_mask)
+                    .bind(id)
+            };
+            if let Err(e) = query.execute(state.db.as_ref()).await {
                 tracing::warn!("discord rank: update failed: {e:?}");
                 return respond("database error".into());
             }
             format!("{artist} - {title} [{version}]")
-        },
+        }
         _ => {
-            if let Err(e) = sqlx::query("UPDATE maps SET status = ?, frozen = 1 WHERE set_id = ?")
-                .bind(status.as_i32())
-                .bind(target)
-                .execute(state.db.as_ref())
-                .await
-            {
-                tracing::warn!("discord rank: update failed: {e:?}");
-                return respond("database error".into());
+            let mut masks: Vec<(i32, u64)> = Vec::with_capacity(maps.len());
+            for (id, _, _, _, _, _, _, mask) in &maps {
+                let mut new_mask = *mask;
+                for m in &modes {
+                    new_mask = crate::constants::status::with_status(new_mask, *m, status.as_i32());
+                }
+                masks.push((*id, new_mask));
+            }
+            for (id, new_mask) in &masks {
+                let query = if all_modes {
+                    sqlx::query("UPDATE maps SET status = ?, status_mask = ?, frozen = 1 WHERE id = ?")
+                        .bind(status.as_i32())
+                        .bind(*new_mask)
+                        .bind(id)
+                } else {
+                    sqlx::query("UPDATE maps SET status_mask = ?, frozen = 1 WHERE id = ?")
+                        .bind(*new_mask)
+                        .bind(id)
+                };
+                if let Err(e) = query.execute(state.db.as_ref()).await {
+                    tracing::warn!("discord rank: update failed: {e:?}");
+                    return respond("database error".into());
+                }
             }
             format!("set {target} ({} maps)", maps.len())
-        },
+        }
     };
 
     for (_, _, md5, ..) in &maps {
@@ -226,5 +267,17 @@ async fn handle_command(state: &AppState, value: &Value) -> (StatusCode, Json<Va
         RankedStatus::Qualified => "qualified",
         _ => "updated",
     };
-    respond(format!("{label} has been {status_name}."))
+    let mode_suffix = if all_modes {
+        String::new()
+    } else {
+        format!(
+            " (modes {})",
+            modes
+                .iter()
+                .map(|m| m.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
+        )
+    };
+    respond(format!("{label} has been {status_name}{mode_suffix}."))
 }

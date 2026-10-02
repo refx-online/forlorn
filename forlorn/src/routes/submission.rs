@@ -240,8 +240,8 @@ pub async fn submit_score(
     };
 
     // cheat bytes (12/16) carry no game mode — resolve it from the map.
-    // explicit new bytes (13-15, 21-24) already carry it.
-    score.mode = if matches!(score.mode, 12 | 13 | 14 | 15 | 16 | 21 | 22 | 23 | 24) {
+    // explicit new bytes (8-15) already carry it.
+    score.mode = if matches!(score.mode, 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16) {
         GameMode::from_cheat_submission(score.mode, beatmap.mode as i32, score.mods()).as_i32()
     } else {
         score.mode().as_i32()
@@ -445,7 +445,7 @@ pub async fn submit_score(
                     .await;
             }
 
-            if beatmap.status != RankedStatus::Pending.as_i32() {
+            if beatmap.mode_status(score.mode) != RankedStatus::Pending.as_i32() {
                 score.rank = calculate_placement(&state.db, &score).await;
             }
         } else if score.quit {
@@ -464,7 +464,7 @@ pub async fn submit_score(
         if score.status == SubmissionStatus::Best.as_i32() {
             let _ = state.metrics.incr("score.submitted", ["status:best"]);
 
-            if beatmap.has_leaderboard() && score.rank == 1 && !user.restricted() {
+            if beatmap.has_leaderboard_in(score.mode) && score.rank == 1 && !user.restricted() {
                 let prev_holder = repository::user::fetch_prev_n1(&state.db, &score)
                     .await
                     .ok()
@@ -510,7 +510,7 @@ pub async fn submit_score(
 
         if score.passed {
             if score.rank == 1
-                && beatmap.has_leaderboard()
+                && beatmap.has_leaderboard_in(score.mode)
                 && !user.restricted()
                 && score.status == SubmissionStatus::Best.as_i32()
             {
@@ -536,7 +536,7 @@ pub async fn submit_score(
             }
 
             if let (true, Some(threshold)) = score.check_pp_cap(&user)
-                && beatmap.awards_ranked_pp()
+                && beatmap.awards_ranked_pp_in(score.mode)
             {
                 let _ = state
                     .metrics
@@ -582,12 +582,12 @@ pub async fn submit_score(
         stats.total_hits += score.total_hits();
         stats.xp += score.xp.round() as i32;
 
-        if score.passed && beatmap.has_leaderboard() {
+        if score.passed && beatmap.has_leaderboard_in(score.mode) {
             if score.max_combo as u32 > stats.max_combo {
                 stats.max_combo = score.max_combo as u32;
             }
 
-            if beatmap.awards_ranked_pp() && score.status == SubmissionStatus::Best.as_i32() {
+            if beatmap.awards_ranked_pp_in(score.mode) && score.status == SubmissionStatus::Best.as_i32() {
                 let prev_best =
                     repository::score::fetch_best(&state.db, user.id, &beatmap.md5, score.mode)
                         .await

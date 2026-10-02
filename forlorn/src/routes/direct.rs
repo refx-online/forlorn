@@ -62,6 +62,7 @@ fn beatmap_from_mirror(bmapset: &BeatmapSet, child: &BeatmapChild) -> Beatmap {
         id: child.beatmap_id,
         set_id: bmapset.set_id,
         status: bmapset.ranked_status,
+        status_mask: crate::constants::status::all_modes_status(bmapset.ranked_status),
         md5: child.file_md5.clone(),
         artist: bmapset.artist.clone(),
         title: bmapset.title.clone(),

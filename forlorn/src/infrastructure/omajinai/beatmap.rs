@@ -73,6 +73,7 @@ pub fn parse_beatmap_from_api(data: BeatmapApiResponse) -> Beatmap {
         id,
         set_id,
         status,
+        status_mask: crate::constants::status::all_modes_status(status),
         md5: data.md5,
         artist: data.artist,
         title: data.title,
