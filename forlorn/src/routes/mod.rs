@@ -6,6 +6,7 @@ pub mod discord;
 pub mod error;
 pub mod essentials;
 pub mod favourite;
+pub mod lazer;
 pub mod lastfm;
 pub mod leaderboard;
 pub mod performance;
@@ -32,6 +33,21 @@ pub fn create_routes() -> Router<AppState> {
     Router::new()
         .route("/", get(essentials::get_redirect_frontend))
         .nest("/api/v1", v1::create_routes())
+        // lazer score write path, called by speedforce after it validates the
+        // submission. Shares usecases::score with the stable route above.
+        .route("/api/v1/lazer/scores", post(lazer::submit_lazer_score))
+        // lazer leaderboard reads. Same underlying query the stable route uses,
+        // so lazer and stable share one leaderboard per map.
+        .route(
+            "/api/v1/lazer/beatmaps/{md5}/scores",
+            get(lazer::get_lazer_leaderboard),
+        )
+        // lazer uploads a replay separately from the score, so it needs both
+        // directions. Shares the storage layer with the stable replay route.
+        .route(
+            "/api/v1/lazer/scores/{score_id}/replay",
+            post(lazer::put_lazer_replay).get(lazer::get_lazer_replay),
+        )
         // osu route
         .route(
             "/web/osu-submit-modular-selector.php",

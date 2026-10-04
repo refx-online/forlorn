@@ -35,13 +35,15 @@ pub async fn fetch_total_scores(db: &DbPoolManager, stats: &Stats) -> Result<Vec
         select s.acc, s.pp 
         from scores s 
         right join maps b on s.map_md5 = b.md5 
-        where s.status = 2 and s.mode = ? and b.status in (2, 3) and s.userid = ? 
+        where s.status = 2 and s.mode = ? and s.userid = ?
+          and mod(floor(b.status_mask / pow(2, ? * 3)), 8) in (4, 5)
         order by s.pp desc 
         limit 100
         "#,
     )
     .bind(stats.mode)
     .bind(stats.id)
+    .bind(stats.mode)
     .fetch_all(db.as_ref())
     .await?;
 
@@ -52,10 +54,12 @@ pub async fn fetch_bonus_count(db: &DbPoolManager, stats: &Stats) -> Result<i32>
     let count = sqlx::query_scalar::<_, i32>(
         "select count(*) from scores s \
          right join maps b on s.map_md5 = b.md5 \
-         where b.status in (2, 3) and s.status = 2 and s.mode = ? and s.userid = ?",
+         where s.status = 2 and s.mode = ? and s.userid = ?
+           and mod(floor(b.status_mask / pow(2, ? * 3)), 8) in (4, 5)",
     )
     .bind(stats.mode)
     .bind(stats.id)
+    .bind(stats.mode)
     .fetch_one(db.as_ref())
     .await?;
 

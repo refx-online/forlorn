@@ -100,7 +100,14 @@ impl Storage {
             )
             .await;
         } else {
-            fs::write(self.replay_file(score_id), data)?;
+            let file = self.replay_file(score_id);
+            // create the parent: the replay dir ships as part of a mounted volume
+            // and is absent on a fresh deployment, which made every save fail with
+            // a bare "No such file or directory"
+            if let Some(parent) = file.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(file, data)?;
         }
         Ok(())
     }

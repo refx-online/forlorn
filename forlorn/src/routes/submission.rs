@@ -13,7 +13,7 @@ use webhook::Webhook;
 
 use crate::{
     constants::{
-        GameMode, Grade, REFX_AUTH_HASH, REFX_CURRENT_CLIENT_HASH, RankedStatus, SubmissionStatus,
+        GameMode, REFX_AUTH_HASH, REFX_CURRENT_CLIENT_HASH, RankedStatus, SubmissionStatus,
     },
     dto::submission::{ScoreHeader, ScoreSubmission},
     infrastructure::{
@@ -31,7 +31,6 @@ use crate::{
             calculate_xp, consume_cheat_values, decrypt_score_data, first_place_webhook,
             update_any_preexisting_personal_best, validate_cheat_values,
         },
-        stats::{get_computed_playtime, recalculate},
     },
     utils::{build_submission, build_submission_charts},
 };
@@ -439,6 +438,15 @@ pub async fn submit_score(
             });
         }
 
+        // Read before calculate_status: that call demotes the player's previous
+        // best to Submitted, so any lookup afterwards finds nothing and the
+        // rscore delta silently becomes the full new score.
+        let prev_best =
+            repository::score::fetch_best(&state.db, user.id, &beatmap.md5, score.mode)
+                .await
+                .ok()
+                .flatten();
+
         if score.passed {
             if let Ok(Some(prev_best)) = calculate_status(&state.db, &mut score).await {
                 let _ = repository::score::update_status(&state.db, prev_best.id, prev_best.status)
@@ -554,132 +562,28 @@ pub async fn submit_score(
             }
         }
 
-        // update player & beatmap stats
-        let mut stats = match repository::stats::fetch_by_user_mode(
+        // update player & beatmap stats. shared with the lazer route via
+        // stats::apply_score so the `stats` table and the leaderboard ZSETs
+        // can't drift between the two clients.
+        let applied = match crate::usecases::stats::apply_score(
             &state.db,
             &state.redis,
-            user.id,
-            score.mode,
+            &user,
+            &score,
+            &beatmap,
+            prev_best.as_ref(),
         )
         .await
         {
-            Ok(Some(stats)) => stats,
-            _ => {
-                tracing::error!(
-                    "stats fetch failed for user {} mode {}",
-                    user.id,
-                    score.mode
-                );
+            Ok(applied) => applied,
+            Err(e) => {
+                tracing::error!("stats update failed for user {}: {e:?}", user.name());
                 return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
-            },
+            }
         };
 
-        let prev_stats = stats.clone();
-
-        stats.playtime += get_computed_playtime(&score, &beatmap);
-        stats.plays += 1;
-        stats.tscore += score.score as u64;
-        stats.total_hits += score.total_hits();
-        stats.xp += score.xp.round() as i32;
-
-        if score.passed && beatmap.has_leaderboard_in(score.mode) {
-            if score.max_combo as u32 > stats.max_combo {
-                stats.max_combo = score.max_combo as u32;
-            }
-
-            if beatmap.awards_ranked_pp_in(score.mode) && score.status == SubmissionStatus::Best.as_i32() {
-                let prev_best =
-                    repository::score::fetch_best(&state.db, user.id, &beatmap.md5, score.mode)
-                        .await
-                        .ok()
-                        .flatten();
-
-                let mut additional_rscore = score.score;
-                if let Some(ref pb) = prev_best {
-                    additional_rscore -= pb.score;
-
-                    if score.grade() != pb.grade() {
-                        if score.grade() >= Grade::A {
-                            stats.increment_grade(score.grade());
-                        }
-
-                        if pb.grade() >= Grade::A {
-                            stats.decrement_grade(pb.grade());
-                        }
-                    }
-                } else if score.grade() >= Grade::A {
-                    stats.increment_grade(score.grade());
-                }
-
-                stats.rscore += additional_rscore as u64;
-
-                if score.pp > 0.0 && (recalculate(&state.db, &mut stats).await).is_err() {
-                    tracing::error!("recalculate failed for user: {}", user.name());
-                    return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
-                }
-
-                // casts as i32 so "let there be negative"
-                // TODO: is this really a good name
-                let pp_lost_gained = stats.pp as i32 - prev_stats.pp as i32;
-                let mut notify_message =
-                    format!("You achieved #{}!, ({:.2}pp)", score.rank, score.pp);
-
-                if pp_lost_gained > 0 {
-                    notify_message += &format!(" and gained {pp_lost_gained:.2}pp!");
-                } else if pp_lost_gained < 0 {
-                    notify_message += &format!(" but lost {:.2}pp!", pp_lost_gained.abs());
-                }
-
-                {
-                    let r = state.redis.clone();
-                    tokio::spawn(async move {
-                        let _ = notify::notify(&r, user.id, &notify_message).await;
-                    });
-                }
-
-                if let Ok(new_rank) = repository::stats::update_rank(
-                    &state.redis,
-                    &stats,
-                    &user.country,
-                    user.restricted(),
-                )
-                .await
-                {
-                    stats.rank = new_rank;
-                }
-            }
-        }
-
-        if (repository::stats::save(&state.db, &stats).await).is_err() {
-            tracing::error!("stats save failed for user: {}", user.name());
-            return (StatusCode::INTERNAL_SERVER_ERROR, b"error: no").into_response();
-        }
-
-        // snapshot pp/rank history for graphs + peak rank (fire and forget —
-        // submission latency shouldn't depend on it)
-        {
-            let db = state.db.clone();
-            let redis = state.redis.clone();
-            let snapshot = stats.clone();
-            let country = user.country.clone();
-            tokio::spawn(async move {
-                let country_rank = repository::stats::get_country_rank(&redis, &snapshot, &country)
-                    .await
-                    .unwrap_or(0);
-                if let Err(e) = repository::history::capture(
-                    &db,
-                    snapshot.id,
-                    snapshot.mode as i32,
-                    snapshot.pp as i32,
-                    snapshot.rank,
-                    country_rank,
-                )
-                .await
-                {
-                    tracing::warn!("history capture failed: {e:?}");
-                }
-            });
-        }
+        let stats = applied.stats;
+        let prev_stats = applied.prev_stats;
 
         if !user.restricted() {
             let r = state.redis.clone();

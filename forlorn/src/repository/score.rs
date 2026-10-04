@@ -164,3 +164,35 @@ pub async fn flag_score(
 
     Ok(())
 }
+
+/// lazer-only score detail that the `scores` row cannot represent.
+///
+/// Nothing wrote this table before; the stable path can only carry the six legacy
+/// hit counters, while lazer sends per-object statistics and a structured mod list.
+/// `is_legacy_score` is 0 because lazer is by definition not a stable submission.
+pub async fn insert_lazer_details(
+    db: &DbPoolManager,
+    score_id: u64,
+    build_id: i64,
+    started_at: chrono::DateTime<chrono::Utc>,
+    ended_at: chrono::DateTime<chrono::Utc>,
+    statistics: &serde_json::Value,
+    mods: &[crate::routes::lazer::LazerMod],
+) -> Result<()> {
+    let mods_json = serde_json::to_value(mods)?;
+
+    sqlx::query(
+        "insert into lazer_scores (score_id, has_replay, started_at, ended_at, build_id, is_legacy_score, statistics_json, mods_json)
+         values (?, 0, ?, ?, ?, 0, ?, ?)",
+    )
+    .bind(score_id)
+    .bind(started_at.naive_utc())
+    .bind(ended_at.naive_utc())
+    .bind(build_id)
+    .bind(statistics)
+    .bind(mods_json)
+    .execute(db.as_ref())
+    .await?;
+
+    Ok(())
+}

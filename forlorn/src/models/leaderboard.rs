@@ -11,6 +11,15 @@ pub struct LeaderboardScore {
     pub id: u64,
     pub preferred_metric: f64,
     pub max_combo: i32,
+    /// lazer's leaderboard shows per-score accuracy and the grade letter; the
+    /// stable response never needed either, so they weren't selected before.
+    pub accuracy: f32,
+    #[sqlx(rename = "grade")]
+    pub grade: String,
+    /// lazer's leaderboard shows a flag per row, so each scorer's country has to
+    /// come back with it -- it is not the requesting user's.
+    #[sqlx(rename = "country_code")]
+    pub country_code: Option<String>,
     pub n50: i32,
     pub n100: i32,
     pub n300: i32,

@@ -18,6 +18,9 @@ pub struct Config {
     pub webhook: DiscordWebhookConfig,
     pub discord_interactions: DiscordInteractionConfig,
     pub osu: OsuConfig,
+    /// shared secret guarding POST /api/v1/lazer/scores. Empty disables the
+    /// endpoint outright rather than defaulting it open.
+    pub lazer_internal_token: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,6 +99,7 @@ impl Default for Config {
             webhook: DiscordWebhookConfig::default(),
             discord_interactions: DiscordInteractionConfig::default(),
             osu: OsuConfig::default(),
+            lazer_internal_token: String::new(),
         }
     }
 }
@@ -173,6 +177,10 @@ impl Default for OsuConfig {
 impl Config {
     pub fn from_env() -> Result<Self> {
         let mut config = Config::default();
+
+        if let Ok(t) = std::env::var("LAZER_INTERNAL_TOKEN") {
+            config.lazer_internal_token = t;
+        }
 
         if let Ok(port) = std::env::var("PORT") {
             config.port = port.parse()?;

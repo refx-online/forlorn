@@ -39,10 +39,11 @@ pub async fn fetch_leaderboard_scores(
 
     let base_query = format!(
         "select s.id, CAST(s.{} AS DOUBLE) as preferred_metric, \
-         s.max_combo, s.n50, s.n100, s.n300, \
+         s.max_combo, s.acc as accuracy, s.grade, s.n50, s.n100, s.n300, \
          s.nmiss, s.nkatu, s.ngeki, s.perfect, s.mods, s.clock_rate, \
          unix_timestamp(s.play_time) as play_time, u.id as userid, \
-         coalesce(concat('[', c.tag, '] ', u.name), u.name) as name \
+         coalesce(concat('[', c.tag, '] ', u.name), u.name) as name, \
+         u.country as country_code \
          {} \
          from scores s \
          inner join users u on u.id = s.userid \
