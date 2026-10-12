@@ -14,7 +14,6 @@ use crate::{
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
 
-const PRIVATE_INITIAL_MAP_ID: i32 = 1000000000;
 const PRIVATE_INITIAL_SET_ID: i32 = 1000000000;
 
 async fn authenticate_user(
@@ -52,11 +51,14 @@ pub async fn get_updated_beatmap(
         _ => return (StatusCode::OK, b"error: map").into_response(),
     };
 
-    if beatmap.id < PRIVATE_INITIAL_MAP_ID {
-        return Redirect::permanent(&format!("https://osu.ppy.sh/web/maps/{filename}"))
-            .into_response();
-    }
-
+    // Serve the map rather than redirect to osu.ppy.sh. That redirect was
+    // `Redirect::permanent`, i.e. HTTP 308, which refx-stable cannot follow:
+    // osu!win is .NET Framework 4.8, whose HttpWebRequest follows 301/302/303/307
+    // but not 308 (that arrived in .NET Core 3.0). The client got a 308 with a
+    // zero-length body and failed to import any map it had not already cached.
+    //
+    // beatmap-service already holds the file, so proxying it is both one hop
+    // fewer and independent of whether osu.ppy.sh is reachable from the client.
     let url = format!(
         "{}/v1/get-osu/{}?md5={}",
         state.config.omajinai.beatmap_service_url, beatmap.id, beatmap.md5
