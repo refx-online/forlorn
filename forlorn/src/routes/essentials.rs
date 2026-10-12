@@ -1,7 +1,6 @@
 use std::sync::LazyLock;
 
 use axum::{
-    body::Bytes,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
@@ -13,8 +12,6 @@ use crate::{
 };
 
 static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(reqwest::Client::new);
-
-const PRIVATE_INITIAL_SET_ID: i32 = 1000000000;
 
 async fn authenticate_user(
     state: &AppState,
@@ -81,22 +78,28 @@ pub async fn get_osz(
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
     };
 
-    if mapset_id < PRIVATE_INITIAL_SET_ID {
-        // 307, not `Redirect::permanent` (308). refx-stable is .NET Framework
-        // 4.8, whose HttpWebRequest follows 301/302/303/307 but not 308 -- 308
-        // support arrived in .NET Core 3.0. A 308 arrives unfollowed with an
-        // empty body, the client writes a 0-byte file, and OsuDirectDownload
-        // rejects it on the >100 byte check and reports "osu!direct download
-        // failed". Temporary is also the honest status: the mirror behind
-        // MIRROR_ENDPOINT can change, which is why bancho.py's equivalent
-        // route uses a 3xx redirect too rather than streaming.
-        return Redirect::temporary(&format!("{}/d/{mapset_id}", state.config.mirror_endpoint))
-            .into_response();
-    }
-
-    match state.storage.load_osz(mapset_id).await {
-        Ok(osz) => Bytes::from(osz).into_response(),
-        Err(_) => StatusCode::NOT_FOUND.into_response(),
+    // Check local, then mirror, then cache -- beatmap-service's getOszFile()
+    // already does exactly that, so proxy it rather than redirecting. This
+    // used to be `Redirect::permanent` (308), which refx-stable cannot follow:
+    // osu!win is .NET Framework 4.8, whose HttpWebRequest follows
+    // 301/302/303/307 but not 308 (that arrived in .NET Core 3.0), so the
+    // client got a 308 with a zero-length body and reported "osu!direct
+    // download failed". Serving the bytes also means the client no longer
+    // depends on reaching osu.direct at all.
+    let url = format!(
+        "{}/v1/get-osz/{mapset_id}",
+        state.config.omajinai.beatmap_service_url
+    );
+    match CLIENT.get(&url).send().await {
+        Ok(resp) if resp.status().is_success() => match resp.bytes().await {
+            Ok(data) => (
+                [(axum::http::header::CONTENT_TYPE, "application/octet-stream")],
+                data,
+            )
+                .into_response(),
+            Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        },
+        _ => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
