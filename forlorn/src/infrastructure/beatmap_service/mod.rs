@@ -17,6 +17,11 @@ pub enum BeatmapLifecycleStatus {
 #[derive(Debug, Deserialize)]
 struct BeatmapResponse {
     beatmap: Option<Beatmap>,
+    /// Whether the `.osu` is present and md5-verified. Metadata resolves long
+    /// before the file finishes downloading, so a missing value means "not
+    /// available" -- which is what this endpoint always meant by `1|false`, and
+    /// why a submission still waits for the file rather than trusting metadata.
+    available: Option<bool>,
 }
 
 pub async fn fetch_beatmap_with_lifecycle(
@@ -45,7 +50,11 @@ pub async fn fetch_beatmap_with_lifecycle(
     let beatmap_resp: BeatmapResponse = serde_json::from_str(&body)?;
 
     if let Some(beatmap) = beatmap_resp.beatmap {
-        Ok(BeatmapLifecycleStatus::Available(Box::new(beatmap)))
+        if beatmap_resp.available == Some(true) {
+            Ok(BeatmapLifecycleStatus::Available(Box::new(beatmap)))
+        } else {
+            Ok(BeatmapLifecycleStatus::UpdateRequired)
+        }
     } else {
         Ok(BeatmapLifecycleStatus::UpdateRequired)
     }
