@@ -82,7 +82,15 @@ pub async fn get_osz(
     };
 
     if mapset_id < PRIVATE_INITIAL_SET_ID {
-        return Redirect::permanent(&format!("{}/d/{mapset_id}", state.config.mirror_endpoint))
+        // 307, not `Redirect::permanent` (308). refx-stable is .NET Framework
+        // 4.8, whose HttpWebRequest follows 301/302/303/307 but not 308 -- 308
+        // support arrived in .NET Core 3.0. A 308 arrives unfollowed with an
+        // empty body, the client writes a 0-byte file, and OsuDirectDownload
+        // rejects it on the >100 byte check and reports "osu!direct download
+        // failed". Temporary is also the honest status: the mirror behind
+        // MIRROR_ENDPOINT can change, which is why bancho.py's equivalent
+        // route uses a 3xx redirect too rather than streaming.
+        return Redirect::temporary(&format!("{}/d/{mapset_id}", state.config.mirror_endpoint))
             .into_response();
     }
 
